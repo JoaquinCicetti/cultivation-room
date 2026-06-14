@@ -7,7 +7,7 @@ import { scrollState } from "../scroll/story";
 
 const Scene = lazy(() => import("../three/Scene"));
 
-const TOTAL_VH = 900;
+const TOTAL_VH = 1050;
 
 export default function Landing() {
   useLayoutEffect(() => {
@@ -26,25 +26,24 @@ export default function Landing() {
 
   return (
     <>
-      {/* cool, clean background */}
       <div className="cool-bg" aria-hidden>
         <div className="cool-blob cool-blob-a" />
         <div className="cool-blob cool-blob-b" />
         <div className="cool-grid" />
       </div>
 
-      {/* scroll spacer drives page height */}
       <div style={{ height: `${TOTAL_VH}vh` }} aria-hidden />
 
-      {/* fixed stage: floating iso room + 2D text layer */}
+      {/* right-column canvas (the floating room) */}
       <div className="stage">
         <Suspense fallback={<SceneLoader />}>
           <Scene />
         </Suspense>
-        <Overlay />
       </div>
 
-      {/* brand mark, always visible */}
+      {/* full-screen 2D layer (left text, toasts, trace, final) */}
+      <Overlay />
+
       <a className="brand" href="/">
         <img src="/logo.svg" alt="Growcast" width={26} height={26} />
         <span>Growcast</span>

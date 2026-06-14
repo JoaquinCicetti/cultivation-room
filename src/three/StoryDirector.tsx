@@ -4,17 +4,30 @@ import { useFrame, useThree } from "@react-three/fiber";
 
 import * as mat from "./materials";
 import { GROW_LIGHTS } from "./sceneData";
-import { clamp01, lerp, scrollState, seg, smooth, story, TRACE_ITEMS, ui, updateStory } from "../scroll/story";
+import {
+  clamp01,
+  IMPROVE_TAGS,
+  lerp,
+  MEASURE_CHIPS,
+  NOTIFICATIONS,
+  scrollState,
+  smooth,
+  story,
+  TIMELINE,
+  TRACE_METRICS,
+  ui,
+  updateStory,
+} from "../scroll/story";
 
-const CAM_TARGET = new THREE.Vector3(0, 1.55, 0);
+const CAM_TARGET = new THREE.Vector3(0, 1.3, 0);
 
 // "Lights on" intro: grow lights stutter on like LED/fluorescent tubes.
 function flicker(x: number) {
   if (x < 0.05) return 0;
-  if (x < 0.09) return 0.85;
-  if (x < 0.13) return 0.12;
+  if (x < 0.09) return 0.8;
+  if (x < 0.13) return 0.1;
   if (x < 0.17) return 1;
-  if (x < 0.21) return 0.45;
+  if (x < 0.21) return 0.4;
   return 1;
 }
 
@@ -30,10 +43,8 @@ function setEl(key: string, opacity: number, ty = 0, scale = 1) {
   if (ty !== 0 || scale !== 1) el.style.transform = `translate3d(0,${ty.toFixed(1)}px,0) scale(${scale.toFixed(3)})`;
 }
 
-const BASE_ZOOM = 63;
+const BASE_ZOOM = 82;
 
-// Single director: damps scroll, computes the story, floats the diorama, and
-// drives the 2D text panels — no per-frame React renders.
 export function StoryDirector() {
   const { scene, camera } = useThree();
   const ambientRef = useRef<THREE.AmbientLight>(null);
@@ -48,43 +59,49 @@ export function StoryDirector() {
   useFrame((state, delta) => {
     const k = 1 - Math.exp(-delta * 5.5);
     scrollState.current += (scrollState.target - scrollState.current) * k;
-    updateStory(scrollState.current);
+    const p = scrollState.current;
+    updateStory(p);
     const t = state.clock.elapsedTime;
 
+    // --- dramatic power-on (time-based, plays once) ---
     if (startRef.current === null) startRef.current = t;
     const pt = t - startRef.current;
     const powerAll = smooth(clamp01((pt - 0.3) / (0.3 + GROW_LIGHTS.length * 0.25)));
-    const pBright = lerp(0.4, 1, powerAll);
+    const pBright = lerp(0.05, 1, powerAll); // starts near-dark -> bright
 
-    // --- floating diorama: turntable bias + idle oscillation + bob + recede ---
+    // --- floating diorama ---
     if (!roomRef.current) roomRef.current = scene.getObjectByName("room") ?? null;
     const room = roomRef.current;
     if (room) {
-      const targetYaw = story.focusYaw + Math.sin(t * 0.22) * 0.12;
+      const targetYaw = story.focusYaw + Math.sin(t * 0.22) * 0.1;
       yaw.current += (targetYaw - yaw.current) * (1 - Math.exp(-delta * 3));
       room.rotation.y = yaw.current;
       room.position.y = Math.sin(t * 0.5) * 0.05;
-      const s = lerp(1, 0.78, story.finalP);
-      room.scale.setScalar(s);
+      room.scale.setScalar(lerp(1, 0.82, story.finalP));
     }
 
-    // --- orthographic iso camera (fixed; zoom eases per act) ---
+    // --- orthographic iso camera ---
     const cam = camera as THREE.OrthographicCamera;
     const targetZoom = BASE_ZOOM * story.zoom;
     if (Math.abs(cam.zoom - targetZoom) > 0.01) {
       cam.zoom += (targetZoom - cam.zoom) * (1 - Math.exp(-delta * 3));
       cam.updateProjectionMatrix();
     }
-    cam.position.set(9 + Math.sin(t * 0.18) * 0.15, 7, 9 + Math.cos(t * 0.16) * 0.15);
+    cam.position.set(9 + Math.sin(t * 0.18) * 0.12, 7, 9 + Math.cos(t * 0.16) * 0.12);
     cam.lookAt(CAM_TARGET);
 
-    // --- lights (bright; grow lights perform the power-on) ---
+    // --- lights (white lights dim while the red alert wash takes over) ---
     const rf = story.roomFade;
-    if (ambientRef.current) ambientRef.current.intensity = story.ambient * pBright;
-    if (hemiRef.current) hemiRef.current.intensity = 0.85 * rf * pBright;
-    if (keyRef.current) keyRef.current.intensity = 1.4 * rf * pBright;
-    if (alertRef.current) alertRef.current.intensity = story.alert * 1.4 * rf;
-    const growBase = 1.7 * rf;
+    const alertDim = 1 - 0.45 * story.alert;
+    if (ambientRef.current) ambientRef.current.intensity = story.ambient * pBright * alertDim;
+    if (hemiRef.current) hemiRef.current.intensity = 0.85 * rf * pBright * alertDim;
+    if (keyRef.current) keyRef.current.intensity = 1.4 * rf * pBright * alertDim;
+    // red alert wash — pulses while temperature is high
+    if (alertRef.current) {
+      const pulse = 1 + Math.sin(t * 6) * 0.3;
+      alertRef.current.intensity = story.alert * 6 * pulse * rf;
+    }
+    const growBase = 1.8 * rf * alertDim;
     for (let i = 0; i < growRefs.current.length; i++) {
       const l = growRefs.current[i];
       if (l) l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05);
@@ -92,39 +109,55 @@ export function StoryDirector() {
     mat.lightGlowMat.emissiveIntensity = 2.2 * rf * powerAll;
     mat.sensorLedMat.emissiveIntensity = 2.0 * rf * powerAll;
 
-    // --- DOM: headlines (above the room) ---
-    for (let i = 0; i < 5; i++) setEl(`hl${i}`, story.headline[i], (1 - story.headline[i]) * -16);
+    // --- DOM: headlines (left, slide up) ---
+    for (let i = 0; i < 5; i++) setEl(`hl${i}`, story.headline[i], (1 - story.headline[i]) * 16);
 
-    // --- DOM: MEASURE metric chips (below) ---
-    setEl("bMetrics", story.fMetrics, (1 - story.fMetrics) * 16);
-
-    // --- DOM: DETECT+CONTROL incident panel (below) ---
-    setEl("bIncident", story.fIncident, (1 - story.fIncident) * 16);
-    const tv = ui["val.temp"];
-    if (tv) tv.textContent = `${story.temp.toFixed(1)}°C`;
-    const tc = ui["chip.temp"];
-    if (tc) tc.style.setProperty("--accent", story.tempColorHex);
-    setEl("alertChip", story.alert);
-    for (let i = 0; i < 5; i++) setEl(`log${i}`, i < story.logStep ? 1 : 0, i < story.logStep ? 0 : 6);
-
-    // --- DOM: IMPROVE context tags (below) ---
-    setEl("bImprove", story.fImprove, (1 - story.fImprove) * 16);
-
-    // --- DOM: traceability record -> passport -> qr ---
-    const tp = story.traceP;
-    const assemble = clamp01(tp / 0.55);
-    const collapse = clamp01((tp - 0.55) / 0.45);
-    setEl("tracePanel", clamp01(tp * 5) * clamp01(1 - story.finalP * 1.8));
-    TRACE_ITEMS.forEach((_, i) => {
-      const inn = clamp01((assemble - i / TRACE_ITEMS.length) * 3);
-      setEl(`trace${i}`, inn * clamp01(1 - collapse * 1.6), (1 - inn) * 12);
+    // --- DOM: holographic sensor readings ---
+    for (const c of MEASURE_CHIPS) {
+      if (c.id === "temp") {
+        setEl("chip.temp", story.fTemp);
+        const v = ui["val.temp"];
+        if (v) v.textContent = `${story.temp.toFixed(1)} °C`;
+        const chip = ui["chip.temp"];
+        if (chip) chip.style.setProperty("--accent", story.tempColorHex);
+      } else {
+        setEl(`chip.${c.id}`, story.fSensors);
+      }
+    }
+    IMPROVE_TAGS.forEach((tag, i) => {
+      const stag = clamp01((p - (0.655 + i * 0.012)) / 0.04);
+      setEl(`tag.${tag.id}`, story.fImprove * stag);
     });
-    setEl("passport", clamp01((collapse - 0.12) / 0.88));
 
-    // --- DOM: scrim mutes the room for the traceability climax + final ---
-    setEl("scrim", clamp01(smooth(seg(scrollState.current, 0.88, 0.95))));
+    // --- DOM: bottom-right notification toasts (hidden once traceability starts) ---
+    for (let i = 0; i < NOTIFICATIONS.length; i++) {
+      const on = i < story.notif && p < 0.76;
+      setEl(`toast${i}`, on ? 1 : 0, on ? 0 : 16);
+    }
 
-    // --- DOM: final composition ---
+    // --- DOM: scrim (mute room for traceability + final) ---
+    setEl("scrim", story.scrim);
+
+    // --- DOM: traceability QR -> line -> timeline -> metrics ---
+    const traceVis = clamp01(story.traceP * 6) * clamp01(1 - story.finalP * 2.2);
+    setEl("traceWrap", traceVis);
+    setEl("qr", story.qrP);
+    const line = ui["traceLine"];
+    if (line) {
+      line.style.opacity = (story.lineP * (1 - story.finalP)).toFixed(3);
+      line.style.transform = `scaleX(${story.lineP.toFixed(3)})`;
+    }
+    setEl("subwindow", clamp01(story.lineP * 2));
+    TIMELINE.forEach((_, i) => {
+      const o = clamp01((story.timelineP - i / TIMELINE.length) * 3);
+      setEl(`tl${i}`, o, (1 - o) * 8);
+    });
+    TRACE_METRICS.forEach((_, i) => {
+      const o = clamp01((story.metricsP - i / TRACE_METRICS.length) * 3);
+      setEl(`tm${i}`, o, (1 - o) * 10);
+    });
+
+    // --- DOM: final ---
     setEl("final", story.finalP);
   });
 
@@ -162,7 +195,8 @@ export function StoryDirector() {
           position={[g.x, g.y - 0.12, g.z]}
         />
       ))}
-      <pointLight ref={alertRef} color={0xe8a85a} intensity={0} distance={4} decay={1.6} position={[1.9, 1.9, -1.8]} />
+      {/* red alert wash over the canopy */}
+      <pointLight ref={alertRef} color={0xff4a33} intensity={0} distance={7.5} decay={1.2} position={[0.4, 1.7, 0]} />
     </>
   );
 }
