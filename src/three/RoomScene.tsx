@@ -94,7 +94,7 @@ function LeafInstances({ items }: { items: LeafXForm[] }) {
     const mesh = ref.current;
     if (!mesh) return;
     const t = state.clock.elapsedTime;
-    const grow = 0.2 + 0.85 * story.growth;
+    const grow = 0.1 + 1.2 * story.growth; // wider range -> plants grow more
     const amp = 0.035 + story.agitation * 0.09;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];

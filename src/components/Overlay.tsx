@@ -3,22 +3,31 @@ import { Link } from "react-router-dom";
 import { HEADLINES, NOTIFICATIONS, regRef, TIMELINE, TRACE_METRICS } from "../scroll/story";
 import { Qr } from "./Qr";
 
-// 2D layer: headlines LEFT, notification toasts BOTTOM-RIGHT, a traceability
-// sequence (QR → line → timeline → metrics), and a left-aligned ending.
-// All data readings live on the room as holograms (see Holograms.tsx).
+// 2D layer overlaid on the full-bleed scene: storytelling text LEFT, traceability
+// (QR → line → timeline → metrics) LEFT, toasts bottom-right, scroll indicator,
+// and a left veil for legibility. Sensor readings live on the room as holograms.
 export function Overlay() {
   return (
     <div className="overlay">
+      <div className="left-veil" aria-hidden />
       <div className="story-scrim" ref={regRef("scrim")} style={{ opacity: 0 }} />
 
-      {/* LEFT — section headlines */}
+      {/* LEFT — storytelling */}
       <div className="text-col">
         {HEADLINES.map((h, i) => (
           <div key={i} className="headline" ref={regRef(`hl${i}`)} style={{ opacity: 0 }}>
+            <span className="kicker">{h.k}</span>
             <h1>{h.h}</h1>
-            <p>{h.s}</p>
+            <p className="sub">{h.s}</p>
+            <p className="lead">{h.lead}</p>
           </div>
         ))}
+      </div>
+
+      {/* scroll indicator */}
+      <div className="scroll-hint" ref={regRef("scrollHint")}>
+        <span>Desplazá para explorar</span>
+        <span className="scroll-chevron" />
       </div>
 
       {/* BOTTOM-RIGHT — notification toasts */}
@@ -34,9 +43,17 @@ export function Overlay() {
         ))}
       </div>
 
-      {/* TRACEABILITY — qr first, line to subwindow timeline, then metrics */}
+      {/* TRACEABILITY (left) — qr first, line to subwindow timeline, then metrics */}
       <div className="trace-wrap" ref={regRef("traceWrap")} style={{ opacity: 0 }}>
         <div className="trace-stage">
+          <div className="qr-card" ref={regRef("qr")} style={{ opacity: 0 }}>
+            <div className="qr-cap">Pasaporte del cultivo</div>
+            <Qr size={138} />
+            <div className="qr-meta">Planta #2481 · Lote A-204</div>
+          </div>
+
+          <span className="trace-line" ref={regRef("traceLine")} style={{ opacity: 0 }} />
+
           <div className="subwindow" ref={regRef("subwindow")} style={{ opacity: 0 }}>
             <div className="sub-title">Historial del ciclo</div>
             <div className="timeline">
@@ -48,14 +65,6 @@ export function Overlay() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <span className="trace-line" ref={regRef("traceLine")} style={{ opacity: 0 }} />
-
-          <div className="qr-card" ref={regRef("qr")} style={{ opacity: 0 }}>
-            <div className="qr-cap">Pasaporte del cultivo</div>
-            <Qr size={146} />
-            <div className="qr-meta">Planta #2481 · Lote A-204</div>
           </div>
         </div>
 

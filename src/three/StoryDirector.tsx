@@ -19,7 +19,13 @@ import {
   updateStory,
 } from "../scroll/story";
 
-const CAM_TARGET = new THREE.Vector3(0, 1.3, 0);
+// Look left of the room so the room sits in the RIGHT of the full-bleed canvas,
+// leaving the left clear for the overlaid text.
+const CAM_TARGET = new THREE.Vector3(-2.5, 1.3, 0);
+
+const LIME = new THREE.Color(0xc8e06a);
+const ALERT_RED = new THREE.Color(0xff3b2e);
+const gcol = new THREE.Color();
 
 // "Lights on" intro: grow lights stutter on like LED/fluorescent tubes.
 function flicker(x: number) {
@@ -101,11 +107,18 @@ export function StoryDirector() {
       const pulse = 1 + Math.sin(t * 6) * 0.3;
       alertRef.current.intensity = story.alert * 6 * pulse * rf;
     }
+    // cultivation lights turn red while the alarm is active
+    gcol.copy(LIME).lerp(ALERT_RED, story.alert);
     const growBase = 1.8 * rf * alertDim;
     for (let i = 0; i < growRefs.current.length; i++) {
       const l = growRefs.current[i];
-      if (l) l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05);
+      if (l) {
+        l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05);
+        l.color.copy(gcol);
+      }
     }
+    mat.lightGlowMat.color.copy(gcol);
+    mat.lightGlowMat.emissive.copy(gcol);
     mat.lightGlowMat.emissiveIntensity = 2.2 * rf * powerAll;
     mat.sensorLedMat.emissiveIntensity = 2.0 * rf * powerAll;
 
@@ -135,7 +148,8 @@ export function StoryDirector() {
       setEl(`toast${i}`, on ? 1 : 0, on ? 0 : 16);
     }
 
-    // --- DOM: scrim (mute room for traceability + final) ---
+    // --- DOM: scroll hint + scrim ---
+    setEl("scrollHint", story.scrollHint);
     setEl("scrim", story.scrim);
 
     // --- DOM: traceability QR -> line -> timeline -> metrics ---

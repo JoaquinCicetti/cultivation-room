@@ -40,8 +40,8 @@ function buildMatrix(seed: number): boolean[][] {
 
 export function Qr({
   size = 150,
-  color = "#46591f",
-  bg = "#ffffff",
+  color = "#c8e06a",
+  bg = "#0e140c",
 }: {
   size?: number;
   color?: string;

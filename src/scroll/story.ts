@@ -33,9 +33,8 @@ export const regRef = (key: string) => (el: HTMLElement | null) => {
 export const MEASURE_CHIPS = [
   { id: "temp", label: "Temperatura", value: "24.8 °C", anchor: [1.45, 1.55, -2.2] },
   { id: "hum", label: "Humedad", value: "63 %", anchor: [-2.35, 1.4, 0.1] },
-  { id: "co2", label: "CO₂", value: "820 ppm", anchor: [0.6, 1.75, 0.35] },
-  { id: "ec", label: "EC", value: "1.7 mS", anchor: [-2.55, 1.05, -1.55] },
-  { id: "ph", label: "pH", value: "6.1", anchor: [-2.55, 0.78, -1.55] },
+  { id: "co2", label: "CO₂", value: "820 ppm", anchor: [0.6, 1.8, 0.35] },
+  { id: "ph", label: "pH", value: "6.1", anchor: [-2.55, 0.95, -1.55] },
 ] as const;
 
 // ---- holographic context tags (anchored on the hero plant) ----------------
@@ -71,13 +70,38 @@ export const TRACE_METRICS = [
   { value: "1.284", label: "Eventos registrados" },
 ];
 
-// ---- professional headlines (left column) ---------------------------------
+// ---- professional storytelling (left, over the scene) ---------------------
 export const HEADLINES = [
-  { h: "Medición en tiempo real", s: "Visibilidad completa del estado de cada zona de la instalación." },
-  { h: "Detección temprana", s: "Identificación de desviaciones antes de que afecten al cultivo." },
-  { h: "Control automático", s: "Cada lectura se convierte en una acción, sin intervención manual." },
-  { h: "Contexto por planta", s: "Historial de ambiente, nutrición, riego y rendimiento, planta por planta." },
-  { h: "Trazabilidad total", s: "Del dato del sensor al historial verificable de todo el ciclo." },
+  {
+    k: "01 · Medición",
+    h: "Medición en tiempo real",
+    s: "Visibilidad completa del estado de cada zona de la instalación.",
+    lead: "Temperatura, humedad, CO₂ y pH se registran de forma continua, sin puntos ciegos.",
+  },
+  {
+    k: "02 · Detección",
+    h: "Detección temprana",
+    s: "Identificación de desviaciones antes de que afecten al cultivo.",
+    lead: "Cada lectura se compara contra los umbrales definidos y se notifica apenas algo se sale de rango.",
+  },
+  {
+    k: "03 · Control",
+    h: "Control automático",
+    s: "Cada lectura se convierte en una acción, sin intervención manual.",
+    lead: "Ante una alerta, la climatización se activa sola y devuelve el ambiente a su rango óptimo.",
+  },
+  {
+    k: "04 · Contexto",
+    h: "Contexto por planta",
+    s: "Historial de ambiente, nutrición, riego y rendimiento, planta por planta.",
+    lead: "Cada ejemplar acumula su propia historia: lote, genética, programa de riego y días de ciclo.",
+  },
+  {
+    k: "05 · Trazabilidad",
+    h: "Trazabilidad total",
+    s: "Del dato del sensor al historial verificable de todo el ciclo.",
+    lead: "Todo queda registrado y disponible al instante en un pasaporte digital del cultivo.",
+  },
 ];
 
 export const HERO_POS: [number, number, number] = [0.6, 1.18, 0.95];
@@ -93,10 +117,11 @@ function tempAt(p: number) {
   return 24.9;
 }
 function growthAt(p: number) {
-  if (p < 0.13) return 0.42;
-  if (p < 0.22) return lerp(0.42, 0.55, smooth(seg(p, 0.13, 0.22)));
-  if (p < 0.57) return lerp(0.55, 0.66, smooth(seg(p, 0.22, 0.57)));
-  if (p < 0.65) return lerp(0.66, 1.0, smooth(seg(p, 0.57, 0.65)));
+  // wider range -> plants visibly grow through the cycle
+  if (p < 0.13) return 0.22;
+  if (p < 0.22) return lerp(0.22, 0.42, smooth(seg(p, 0.13, 0.22)));
+  if (p < 0.57) return lerp(0.42, 0.66, smooth(seg(p, 0.22, 0.57)));
+  if (p < 0.7) return lerp(0.66, 1.0, smooth(seg(p, 0.57, 0.7)));
   return 1.0;
 }
 function fanAt(p: number) {
@@ -143,6 +168,7 @@ export const story = {
   timelineP: 0,
   metricsP: 0,
   scrim: 0,
+  scrollHint: 1,
   headline: [0, 0, 0, 0, 0] as number[],
 };
 
@@ -173,12 +199,14 @@ export function updateStory(p: number) {
   story.fTemp = band(p, 0.02, 0.62, 0.1, 0.1);
   story.fImprove = band(p, 0.65, 0.77, 0.2, 0.25) * (1 - story.traceP);
 
-  // headlines (left column)
-  story.headline[0] = band(p, 0.0, 0.16, 0.01, 0.3);
+  // headlines (left, over the scene) — the first is visible from the very start
+  story.headline[0] = 1 - smooth(seg(p, 0.1, 0.18));
   story.headline[1] = band(p, 0.22, 0.39);
   story.headline[2] = band(p, 0.43, 0.6);
   story.headline[3] = band(p, 0.65, 0.78);
-  story.headline[4] = band(p, 0.78, 0.93) * (1 - story.finalP);
+  // the traceability headline announces, then yields to the QR/timeline panel
+  story.headline[4] = band(p, 0.75, 0.9) * (1 - smooth(seg(p, 0.785, 0.83))) * (1 - story.finalP);
+  story.scrollHint = 1 - smooth(seg(p, 0.004, 0.03));
 
   // traceability sub-sequence
   const tl = story.traceP;

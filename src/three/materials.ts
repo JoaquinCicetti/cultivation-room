@@ -3,16 +3,16 @@ import * as THREE from "three";
 // Bright, clean palette — the room is a floating isometric illustration on a
 // light page, so materials read crisp and luminous (not a dark interior).
 
-// --- architecture (light platform + walls) --------------------------------
-export const floorMat = new THREE.MeshStandardMaterial({ color: 0xe9ebe0, roughness: 0.85 });
-export const wallMat = new THREE.MeshStandardMaterial({ color: 0xf2f4ec, roughness: 0.95 });
-export const baseboardMat = new THREE.MeshStandardMaterial({ color: 0xdadccf, roughness: 0.8 });
-export const platformMat = new THREE.MeshStandardMaterial({ color: 0xd9dccf, roughness: 0.9 });
+// --- architecture (dark room so the white AC + lit plants pop) ------------
+export const floorMat = new THREE.MeshStandardMaterial({ color: 0x1c221b, roughness: 0.88 });
+export const wallMat = new THREE.MeshStandardMaterial({ color: 0x141a12, roughness: 0.96 });
+export const baseboardMat = new THREE.MeshStandardMaterial({ color: 0x0f140d, roughness: 0.85 });
+export const platformMat = new THREE.MeshStandardMaterial({ color: 0x10150e, roughness: 0.92 });
 
-// --- racks / structure (crisp charcoal against the light floor) -----------
-export const rackMat = new THREE.MeshStandardMaterial({ color: 0x33382f, roughness: 0.4, metalness: 0.5 });
-export const trayMaterial = new THREE.MeshStandardMaterial({ color: 0x2c322a, roughness: 0.55, metalness: 0.35 });
-export const footMat = new THREE.MeshStandardMaterial({ color: 0x24281f, roughness: 0.6 });
+// --- racks / structure ----------------------------------------------------
+export const rackMat = new THREE.MeshStandardMaterial({ color: 0x474e3f, roughness: 0.42, metalness: 0.5 });
+export const trayMaterial = new THREE.MeshStandardMaterial({ color: 0x363c30, roughness: 0.55, metalness: 0.35 });
+export const footMat = new THREE.MeshStandardMaterial({ color: 0x2a2f24, roughness: 0.6 });
 
 // --- grow lighting (warm lime) -------------------------------------------
 export const lightFixtureMat = new THREE.MeshStandardMaterial({ color: 0x2a2f28, roughness: 0.4, metalness: 0.6 });

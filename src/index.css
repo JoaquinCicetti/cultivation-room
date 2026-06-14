@@ -1,15 +1,15 @@
 :root {
-  --ink: #1b2016;
-  --muted: #5c6650;
+  --ink: #eef2e2;
+  --muted: #97a386;
   --lime: #c8e06a;
-  --lime-ink: #4d6a1f;
-  --amber: #c2861f;
-  --red: #cc4a2f;
-  --bg: #eef2e6;
-  --card: rgba(255, 255, 255, 0.78);
-  --line: rgba(27, 32, 22, 0.1);
+  --lime-ink: #b4d169;
+  --amber: #e8b34a;
+  --red: #f0654a;
+  --bg: #0a0e09;
+  --card: rgba(18, 24, 15, 0.66);
+  --line: rgba(238, 242, 226, 0.12);
 
-  color-scheme: light;
+  color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -20,7 +20,6 @@
 *::after {
   box-sizing: border-box;
 }
-
 html,
 body {
   margin: 0;
@@ -38,45 +37,45 @@ canvas {
   touch-action: pan-y;
 }
 
-/* ---- cool background -------------------------------------------------- */
+/* ---- dark background -------------------------------------------------- */
 .cool-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(120% 90% at 70% -10%, #ffffff 0%, #eef2e6 45%, #e6ebde 100%);
+  background: radial-gradient(130% 100% at 70% 0%, #121810 0%, #0b0f09 50%, #070a06 100%);
 }
 .cool-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.45;
+  filter: blur(110px);
+  opacity: 0.3;
 }
 .cool-blob-a {
-  width: 44vw;
-  height: 44vw;
-  right: 2vw;
-  top: 2vh;
-  background: radial-gradient(circle, rgba(200, 224, 106, 0.5), transparent 70%);
+  width: 46vw;
+  height: 46vw;
+  right: 4vw;
+  top: 0;
+  background: radial-gradient(circle, rgba(200, 224, 106, 0.4), transparent 70%);
   animation: drift1 24s ease-in-out infinite;
 }
 .cool-blob-b {
   width: 38vw;
   height: 38vw;
   left: -8vw;
-  bottom: -8vh;
-  background: radial-gradient(circle, rgba(156, 182, 79, 0.34), transparent 70%);
+  bottom: -10vh;
+  background: radial-gradient(circle, rgba(120, 150, 70, 0.3), transparent 70%);
   animation: drift2 28s ease-in-out infinite;
 }
 .cool-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(27, 32, 22, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(27, 32, 22, 0.035) 1px, transparent 1px);
-  background-size: 46px 46px;
-  mask-image: radial-gradient(120% 90% at 60% 40%, #000 25%, transparent 80%);
-  -webkit-mask-image: radial-gradient(120% 90% at 60% 40%, #000 25%, transparent 80%);
+    linear-gradient(rgba(238, 242, 226, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238, 242, 226, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(120% 90% at 65% 35%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(120% 90% at 65% 35%, #000 20%, transparent 75%);
 }
 @keyframes drift1 {
   50% {
@@ -89,13 +88,10 @@ canvas {
   }
 }
 
-/* ---- right-column stage (the floating room) --------------------------- */
+/* ---- full-bleed stage (the room) -------------------------------------- */
 .stage {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: 60%;
+  inset: 0;
   z-index: 0;
 }
 .scene-loader {
@@ -129,22 +125,29 @@ canvas {
   pointer-events: none;
 }
 
+/* left veil keeps the overlaid text legible over the scene */
+.left-veil {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(90deg, var(--bg) 0%, rgba(10, 14, 9, 0.82) 26%, rgba(10, 14, 9, 0.3) 50%, transparent 66%);
+}
+
 .story-scrim {
   position: fixed;
   inset: 0;
-  background: radial-gradient(120% 100% at 55% 45%, rgba(240, 244, 233, 0.97), rgba(236, 240, 228, 0.92));
+  background: radial-gradient(130% 100% at 55% 45%, rgba(8, 11, 7, 0.92), rgba(7, 10, 6, 0.96));
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   will-change: opacity;
 }
 
-/* ---- left text column ------------------------------------------------- */
+/* ---- left storytelling ------------------------------------------------ */
 .text-col {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 44%;
+  width: 46%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
@@ -156,19 +159,72 @@ canvas {
   max-width: 30rem;
   will-change: opacity, transform;
 }
+.kicker {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lime-ink);
+}
 .headline h1 {
   margin: 0;
   font-size: clamp(2rem, 3.8vw, 3.3rem);
   line-height: 1.06;
   font-weight: 690;
   letter-spacing: -0.03em;
+  color: var(--ink);
 }
-.headline p {
+.headline .sub {
   margin: 0.9rem 0 0;
-  max-width: 34ch;
-  font-size: clamp(0.95rem, 1.3vw, 1.15rem);
-  line-height: 1.45;
+  max-width: 32ch;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.4;
+  color: #d4dcc4;
+}
+.headline .lead {
+  margin: 0.9rem 0 0;
+  max-width: 36ch;
+  font-size: clamp(0.85rem, 1.1vw, 0.98rem);
+  line-height: 1.55;
   color: var(--muted);
+}
+
+/* ---- scroll indicator ------------------------------------------------- */
+.scroll-hint {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(1rem, 3.5vh, 2.4rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  will-change: opacity;
+}
+.scroll-chevron {
+  width: 10px;
+  height: 10px;
+  border-right: 1.5px solid var(--lime-ink);
+  border-bottom: 1.5px solid var(--lime-ink);
+  transform: rotate(45deg);
+  animation: chev 1.6s ease-in-out infinite;
+}
+@keyframes chev {
+  0%,
+  100% {
+    transform: translateY(-2px) rotate(45deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(3px) rotate(45deg);
+    opacity: 1;
+  }
 }
 
 /* ---- holographic readings (drei Html) --------------------------------- */
@@ -181,7 +237,7 @@ canvas {
   flex-direction: column;
   align-items: center;
   transform: translateY(-44%);
-  --accent: var(--lime-ink);
+  --accent: var(--lime);
   will-change: opacity;
   transition: opacity 0.12s linear;
 }
@@ -191,9 +247,11 @@ canvas {
   gap: 1px;
   padding: 5px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(12, 17, 9, 0.82);
   border: 1px solid var(--accent);
-  box-shadow: 0 6px 18px rgba(27, 32, 22, 0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   white-space: nowrap;
 }
 .holo-label {
@@ -205,13 +263,13 @@ canvas {
 .holo-value {
   font-size: 13px;
   font-weight: 750;
-  color: #283120;
+  color: #eaf2d6;
   font-variant-numeric: tabular-nums;
 }
 .holo-card-tag {
   font-size: 12px;
   font-weight: 650;
-  color: var(--lime-ink);
+  color: var(--lime);
   padding: 5px 11px;
 }
 .holo-stem {
@@ -244,9 +302,9 @@ canvas {
   gap: 0.7rem;
   padding: 0.75rem 0.9rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(16, 22, 13, 0.82);
   border: 1px solid var(--line);
-  box-shadow: 0 12px 30px rgba(27, 32, 22, 0.12);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   will-change: opacity, transform;
@@ -260,15 +318,15 @@ canvas {
 }
 .toast-warn .toast-dot {
   background: var(--red);
-  box-shadow: 0 0 9px rgba(204, 74, 47, 0.5);
+  box-shadow: 0 0 9px rgba(240, 101, 74, 0.6);
 }
 .toast-action .toast-dot {
   background: var(--amber);
-  box-shadow: 0 0 9px rgba(194, 134, 31, 0.5);
+  box-shadow: 0 0 9px rgba(232, 179, 74, 0.6);
 }
 .toast-ok .toast-dot {
-  background: var(--lime-ink);
-  box-shadow: 0 0 9px rgba(77, 106, 31, 0.5);
+  background: var(--lime);
+  box-shadow: 0 0 9px rgba(200, 224, 106, 0.6);
 }
 .toast-body {
   display: flex;
@@ -284,16 +342,16 @@ canvas {
   color: var(--muted);
 }
 
-/* ---- traceability sequence -------------------------------------------- */
+/* ---- traceability (left) ---------------------------------------------- */
 .trace-wrap {
   position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 1.6rem;
-  padding: 1.5rem;
+  gap: 1.5rem;
+  padding: 0 clamp(1.5rem, 5vw, 4.5rem);
   will-change: opacity;
 }
 .trace-stage {
@@ -301,13 +359,42 @@ canvas {
   align-items: center;
   gap: 0;
 }
+.qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(16, 22, 13, 0.9);
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.5);
+  will-change: opacity;
+}
+.qr-cap {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lime-ink);
+}
+.qr-meta {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.trace-line {
+  width: 56px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--lime), var(--lime-ink));
+  transform-origin: left center;
+  will-change: opacity, transform;
+}
 .subwindow {
-  width: 300px;
+  width: 290px;
   padding: 1.1rem 1.3rem;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(16, 22, 13, 0.82);
   border: 1px solid var(--line);
-  box-shadow: 0 18px 44px rgba(27, 32, 22, 0.14);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
   will-change: opacity;
 }
 .sub-title {
@@ -338,45 +425,15 @@ canvas {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--lime-ink);
+  background: var(--lime);
 }
 .tl-label {
   font-size: 0.85rem;
   font-weight: 500;
 }
-.trace-line {
-  width: 64px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--lime-ink), var(--lime));
-  transform-origin: right center;
-  will-change: opacity, transform;
-}
-.qr-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1.1rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--line);
-  box-shadow: 0 22px 50px rgba(27, 32, 22, 0.18);
-  will-change: opacity;
-}
-.qr-cap {
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--lime-ink);
-}
-.qr-meta {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
 .trace-metrics {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 0.7rem;
 }
 .tm {
@@ -385,7 +442,7 @@ canvas {
   gap: 2px;
   padding: 0.7rem 1rem;
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(16, 22, 13, 0.72);
   border: 1px solid var(--line);
   min-width: 8.5rem;
   will-change: opacity, transform;
@@ -393,7 +450,7 @@ canvas {
 .tm strong {
   font-size: 1.25rem;
   font-weight: 760;
-  color: var(--lime-ink);
+  color: var(--lime);
   font-variant-numeric: tabular-nums;
 }
 .tm span {
@@ -401,13 +458,13 @@ canvas {
   color: var(--muted);
 }
 
-/* ---- final (left-aligned) --------------------------------------------- */
+/* ---- final (left) ----------------------------------------------------- */
 .final {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-  width: min(48ch, 60%);
+  width: min(48ch, 70%);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -417,7 +474,7 @@ canvas {
   will-change: opacity;
 }
 .final-logo {
-  filter: drop-shadow(0 8px 22px rgba(156, 182, 79, 0.3));
+  filter: drop-shadow(0 8px 26px rgba(200, 224, 106, 0.35));
 }
 .final-word {
   margin: 0;
@@ -439,29 +496,24 @@ canvas {
   border-radius: 999px;
   font-weight: 650;
   font-size: 0.95rem;
-  color: #1f2a10;
+  color: #15200a;
   background: var(--lime);
-  box-shadow: 0 12px 30px rgba(156, 182, 79, 0.35);
+  box-shadow: 0 14px 34px rgba(200, 224, 106, 0.28);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 38px rgba(156, 182, 79, 0.45);
+  box-shadow: 0 18px 42px rgba(200, 224, 106, 0.4);
 }
 
-/* ---- responsive fallback ---------------------------------------------- */
+/* ---- responsive ------------------------------------------------------- */
 @media (max-width: 880px) {
-  .stage {
-    width: 100%;
-    opacity: 0.55;
-  }
   .text-col,
-  .final {
+  .final,
+  .trace-wrap {
     width: 100%;
-    align-items: center;
-    text-align: center;
   }
-  .headline {
-    max-width: 22ch;
+  .left-veil {
+    background: linear-gradient(180deg, var(--bg) 0%, rgba(10, 14, 9, 0.5) 40%, transparent 70%);
   }
 }
