@@ -26,7 +26,8 @@ export const cableMat = new THREE.MeshStandardMaterial({ color: 0x1c201a, roughn
 
 // --- plants (vibrant) ------------------------------------------------------
 export const potMat = new THREE.MeshStandardMaterial({ color: 0xc2774f, roughness: 0.8 });
-export const soilMat = new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 0.98 });
+// white growing medium (perlite / rockwool)
+export const soilMat = new THREE.MeshStandardMaterial({ color: 0xe8e6da, roughness: 0.9 });
 export const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 });
 export const stemMat = new THREE.MeshStandardMaterial({ color: 0x4d7a2e, roughness: 0.75 });
 export const LEAF_COLORS = [0x7bbf3f, 0x5a9e2e, 0x9ed85a] as const;

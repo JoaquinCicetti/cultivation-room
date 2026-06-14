@@ -43,11 +43,16 @@ export function Overlay() {
         ))}
       </div>
 
-      {/* TRACEABILITY (left) — qr first, line to subwindow timeline, then metrics */}
+      {/* TRACEABILITY (left) — heading, then qr -> line -> timeline, then metrics */}
       <div className="trace-wrap" ref={regRef("traceWrap")} style={{ opacity: 0 }}>
+        <div className="trace-head">
+          <span className="kicker">05 · Trazabilidad</span>
+          <h2>Trazabilidad total</h2>
+          <p>Del dato del sensor al historial verificable de todo el ciclo.</p>
+        </div>
         <div className="trace-stage">
           <div className="qr-card" ref={regRef("qr")} style={{ opacity: 0 }}>
-            <div className="qr-cap">Pasaporte del cultivo</div>
+            <div className="qr-cap">Registro del cultivo</div>
             <Qr size={138} />
             <div className="qr-meta">Planta #2481 · Lote A-204</div>
           </div>

@@ -37,14 +37,8 @@ export const MEASURE_CHIPS = [
   { id: "ph", label: "pH", value: "6.1", anchor: [-2.55, 0.95, -1.55] },
 ] as const;
 
-// ---- holographic context tags (anchored on the hero plant) ----------------
-export const IMPROVE_TAGS = [
-  { id: "id", label: "Planta #2481", anchor: [0.6, 1.55, 0.95] },
-  { id: "day", label: "Día 37", anchor: [1.35, 1.3, 0.7] },
-  { id: "batch", label: "Lote A-204", anchor: [-0.2, 1.42, 1.25] },
-  { id: "cultivar", label: "Blue Dream", anchor: [1.2, 1.05, 1.3] },
-  { id: "program", label: "Riego · Programa B", anchor: [-0.35, 1.1, 0.55] },
-] as const;
+// ---- single ID holo on the hero plant (links to its traceability record) --
+export const IMPROVE_TAGS = [{ id: "id", label: "Planta #2481", anchor: [0.6, 1.62, 0.95] }] as const;
 
 // ---- bottom-right notification toasts -------------------------------------
 export const NOTIFICATIONS = [
@@ -204,8 +198,8 @@ export function updateStory(p: number) {
   story.headline[1] = band(p, 0.22, 0.39);
   story.headline[2] = band(p, 0.43, 0.6);
   story.headline[3] = band(p, 0.65, 0.78);
-  // the traceability headline announces, then yields to the QR/timeline panel
-  story.headline[4] = band(p, 0.75, 0.9) * (1 - smooth(seg(p, 0.785, 0.83))) * (1 - story.finalP);
+  // section 5's text lives inside the traceability panel (above its timeline)
+  story.headline[4] = 0;
   story.scrollHint = 1 - smooth(seg(p, 0.004, 0.03));
 
   // traceability sub-sequence
@@ -216,7 +210,7 @@ export function updateStory(p: number) {
   story.metricsP = seg(tl, 0.74, 1.0);
   story.scrim = clamp01(smooth(seg(p, 0.78, 0.85)));
 
-  // lighting — bright steady; only the final dims/recedes
+  // lighting — brighter steady scene; only the final dims/recedes
   story.roomFade = 1 - 0.88 * seg(p, 0.92, 1.0);
-  story.ambient = lerp(1.1, 0.95, seg(p, 0.85, 1.0)) * lerp(1, 0.45, seg(p, 0.92, 1.0));
+  story.ambient = lerp(2.0, 1.6, seg(p, 0.85, 1.0)) * lerp(1, 0.45, seg(p, 0.92, 1.0));
 }

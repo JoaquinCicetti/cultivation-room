@@ -354,6 +354,23 @@ canvas {
   padding: 0 clamp(1.5rem, 5vw, 4.5rem);
   will-change: opacity;
 }
+.trace-head {
+  max-width: 32rem;
+}
+.trace-head h2 {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.8rem, 3.2vw, 2.8rem);
+  font-weight: 690;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.trace-head p {
+  margin: 0.7rem 0 0;
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: clamp(0.85rem, 1.1vw, 0.98rem);
+  line-height: 1.5;
+}
 .trace-stage {
   display: flex;
   align-items: center;

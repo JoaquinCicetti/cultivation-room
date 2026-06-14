@@ -19,11 +19,11 @@ import {
   updateStory,
 } from "../scroll/story";
 
-// Look left of the room so the room sits in the RIGHT of the full-bleed canvas,
+// Look well left of the room so it sits in the RIGHT of the full-bleed canvas,
 // leaving the left clear for the overlaid text.
-const CAM_TARGET = new THREE.Vector3(-2.5, 1.3, 0);
+const CAM_TARGET = new THREE.Vector3(-3.4, 1.3, 0);
 
-const LIME = new THREE.Color(0xc8e06a);
+const GROW_GREEN = new THREE.Color(0x9ed84a); // clearly green cultivation light
 const ALERT_RED = new THREE.Color(0xff3b2e);
 const gcol = new THREE.Color();
 
@@ -56,7 +56,8 @@ export function StoryDirector() {
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const keyRef = useRef<THREE.DirectionalLight>(null);
-  const alertRef = useRef<THREE.PointLight>(null);
+  const fillARef = useRef<THREE.DirectionalLight>(null);
+  const fillBRef = useRef<THREE.DirectionalLight>(null);
   const growRefs = useRef<(THREE.PointLight | null)[]>([]);
   const roomRef = useRef<THREE.Object3D | null>(null);
   const startRef = useRef<number | null>(null);
@@ -96,30 +97,28 @@ export function StoryDirector() {
     cam.position.set(9 + Math.sin(t * 0.18) * 0.12, 7, 9 + Math.cos(t * 0.16) * 0.12);
     cam.lookAt(CAM_TARGET);
 
-    // --- lights (white lights dim while the red alert wash takes over) ---
+    // --- lights (brighter scene; white lights dim a bit so red reads on alarm) ---
     const rf = story.roomFade;
-    const alertDim = 1 - 0.45 * story.alert;
+    const alertDim = 1 - 0.4 * story.alert;
     if (ambientRef.current) ambientRef.current.intensity = story.ambient * pBright * alertDim;
-    if (hemiRef.current) hemiRef.current.intensity = 0.85 * rf * pBright * alertDim;
-    if (keyRef.current) keyRef.current.intensity = 1.4 * rf * pBright * alertDim;
-    // red alert wash — pulses while temperature is high
-    if (alertRef.current) {
-      const pulse = 1 + Math.sin(t * 6) * 0.3;
-      alertRef.current.intensity = story.alert * 6 * pulse * rf;
-    }
-    // cultivation lights turn red while the alarm is active
-    gcol.copy(LIME).lerp(ALERT_RED, story.alert);
-    const growBase = 1.8 * rf * alertDim;
+    if (hemiRef.current) hemiRef.current.intensity = 1.5 * rf * pBright * alertDim;
+    if (keyRef.current) keyRef.current.intensity = 2.2 * rf * pBright * alertDim;
+    if (fillARef.current) fillARef.current.intensity = 1.0 * rf * pBright * alertDim;
+    if (fillBRef.current) fillBRef.current.intensity = 0.7 * rf * pBright * alertDim;
+    // The CULTIVATION RACK LIGHTS turn red and brighter on alarm (no central blob).
+    gcol.copy(GROW_GREEN).lerp(ALERT_RED, story.alert);
+    const growBase = 3.4 * rf * (1 + story.alert * 1.2);
+    const alarmPulse = 1 + Math.sin(t * 7) * 0.16 * story.alert;
     for (let i = 0; i < growRefs.current.length; i++) {
       const l = growRefs.current[i];
       if (l) {
-        l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05);
+        l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05) * alarmPulse;
         l.color.copy(gcol);
       }
     }
     mat.lightGlowMat.color.copy(gcol);
     mat.lightGlowMat.emissive.copy(gcol);
-    mat.lightGlowMat.emissiveIntensity = 2.2 * rf * powerAll;
+    mat.lightGlowMat.emissiveIntensity = (2.2 + story.alert * 2) * rf * powerAll;
     mat.sensorLedMat.emissiveIntensity = 2.0 * rf * powerAll;
 
     // --- DOM: headlines (left, slide up) ---
@@ -196,21 +195,22 @@ export function StoryDirector() {
         shadow-bias={-0.001}
         shadow-normalBias={0.02}
       />
+      {/* white multidirectional fill so room details read */}
+      <directionalLight ref={fillARef} color={0xffffff} intensity={0} position={[-6, 5, 8]} />
+      <directionalLight ref={fillBRef} color={0xf2f5ff} intensity={0} position={[8, 4, -7]} />
       {GROW_LIGHTS.map((g, i) => (
         <pointLight
           key={i}
           ref={(el) => {
             growRefs.current[i] = el;
           }}
-          color={0xc8e06a}
+          color={0x9ed84a}
           intensity={0}
-          distance={4.5}
-          decay={1.4}
+          distance={4.8}
+          decay={1.3}
           position={[g.x, g.y - 0.12, g.z]}
         />
       ))}
-      {/* red alert wash over the canopy */}
-      <pointLight ref={alertRef} color={0xff4a33} intensity={0} distance={7.5} decay={1.2} position={[0.4, 1.7, 0]} />
     </>
   );
 }
