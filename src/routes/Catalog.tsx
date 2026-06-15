@@ -1,21 +1,40 @@
 import { Link } from "react-router-dom";
 
-// Lazy-loaded placeholder route — proves code-splitting works. Real catalog
-// content/data comes in a later phase.
+import { ContactButton } from "../components/contact/ContactButton";
+import { ProductItem } from "./catalog/ProductItem";
+import { groups } from "./catalog/products";
+
+// Product catalog — stacked, full-width sections (one per product group), all
+// dark to match the room theme. Data lives in ./catalog/products.
 export default function Catalog() {
   return (
-    <main
-      style={{
-        minHeight: "100%",
-        padding: "clamp(1.5rem, 4vw, 3.5rem)",
-        overflow: "auto",
-      }}
-    >
-      <Link to="/" style={{ color: "var(--growcast-lime)", fontSize: "0.85rem" }}>
-        ← Growcast
-      </Link>
-      <h1 style={{ marginTop: "2rem", fontWeight: 600, letterSpacing: "-0.02em" }}>Catalog</h1>
-      <p style={{ opacity: 0.55 }}>Placeholder — product catalog coming soon.</p>
+    <main className="catalog">
+      <header className="catalog-head">
+        <Link to="/" className="catalog-back">
+          ← Growcast
+        </Link>
+        <h1 className="catalog-title">Catálogo</h1>
+        <p className="catalog-lead">
+          Monitoreo, control y trazabilidad para cada escala de cultivo.
+        </p>
+      </header>
+
+      {groups.map((group) => (
+        <section key={group.id} id={group.id} className="catalog-group">
+          <h2 className="catalog-group-title">{group.title}</h2>
+          {group.products.map((product) => (
+            <ProductItem key={product.name} product={product} />
+          ))}
+        </section>
+      ))}
+
+      <section className="catalog-contact">
+        <h2 className="catalog-contact-title">¿Hablamos?</h2>
+        <p className="catalog-contact-lead">
+          Contanos sobre tu instalación y te recomendamos la solución justa.
+        </p>
+        <ContactButton label="Empezá ahora" />
+      </section>
     </main>
   );
 }
