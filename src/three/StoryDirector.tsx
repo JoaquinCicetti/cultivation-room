@@ -21,9 +21,9 @@ import {
 
 // Look well left of the room so it sits in the RIGHT of the full-bleed canvas,
 // leaving the left clear for the overlaid text.
-const CAM_TARGET = new THREE.Vector3(-3.4, 1.3, 0);
+const CAM_TARGET = new THREE.Vector3(-3.8, 1.3, 0);
 
-const GROW_GREEN = new THREE.Color(0x9ed84a); // clearly green cultivation light
+const GROW_PURPLE = new THREE.Color(0xa85cff); // horticultural purple grow light
 const ALERT_RED = new THREE.Color(0xff3b2e);
 const gcol = new THREE.Color();
 
@@ -49,7 +49,7 @@ function setEl(key: string, opacity: number, ty = 0, scale = 1) {
   if (ty !== 0 || scale !== 1) el.style.transform = `translate3d(0,${ty.toFixed(1)}px,0) scale(${scale.toFixed(3)})`;
 }
 
-const BASE_ZOOM = 82;
+const BASE_ZOOM = 102;
 
 export function StoryDirector() {
   const { scene, camera } = useThree();
@@ -106,7 +106,7 @@ export function StoryDirector() {
     if (fillARef.current) fillARef.current.intensity = 1.0 * rf * pBright * alertDim;
     if (fillBRef.current) fillBRef.current.intensity = 0.7 * rf * pBright * alertDim;
     // The CULTIVATION RACK LIGHTS turn red and brighter on alarm (no central blob).
-    gcol.copy(GROW_GREEN).lerp(ALERT_RED, story.alert);
+    gcol.copy(GROW_PURPLE).lerp(ALERT_RED, story.alert);
     const growBase = 3.4 * rf * (1 + story.alert * 1.2);
     const alarmPulse = 1 + Math.sin(t * 7) * 0.16 * story.alert;
     for (let i = 0; i < growRefs.current.length; i++) {
@@ -165,8 +165,9 @@ export function StoryDirector() {
       const o = clamp01((story.timelineP - i / TIMELINE.length) * 3);
       setEl(`tl${i}`, o, (1 - o) * 8);
     });
+    setEl("traceChart", clamp01(story.metricsP * 1.8), (1 - clamp01(story.metricsP * 1.8)) * 10);
     TRACE_METRICS.forEach((_, i) => {
-      const o = clamp01((story.metricsP - i / TRACE_METRICS.length) * 3);
+      const o = clamp01((story.metricsP - 0.25 - i / TRACE_METRICS.length) * 3);
       setEl(`tm${i}`, o, (1 - o) * 10);
     });
 
@@ -204,7 +205,7 @@ export function StoryDirector() {
           ref={(el) => {
             growRefs.current[i] = el;
           }}
-          color={0x9ed84a}
+          color={0xa85cff}
           intensity={0}
           distance={4.8}
           decay={1.3}

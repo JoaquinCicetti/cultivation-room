@@ -176,3 +176,4 @@ export function buildInstanceData(): InstanceData {
 export const AC_POS: Vec3 = [2.15, 2.0, -ROOM_D / 2 + 0.22];
 export const TANK_POS: Vec3 = [-2.8, 0.12, -2.0];
 export const CONTROLLER_POS: Vec3 = [0.0, 1.55, -ROOM_D / 2 + 0.14];
+export const VAPORIZER_POS: Vec3 = [1.5, 0.12, 1.55];

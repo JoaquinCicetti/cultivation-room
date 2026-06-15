@@ -30,6 +30,9 @@ export default function Landing() {
         <div className="cool-blob cool-blob-a" />
         <div className="cool-blob cool-blob-b" />
         <div className="cool-grid" />
+        <div className="cool-dots" />
+        <div className="cool-scan" />
+        <div className="cool-vignette" />
       </div>
 
       <div style={{ height: `${TOTAL_VH}vh` }} aria-hidden />

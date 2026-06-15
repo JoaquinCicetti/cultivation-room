@@ -19,7 +19,7 @@ import {
   type XForm,
 } from "./sceneData";
 import { story } from "../scroll/story";
-import { AirConditioner, Controller, IrrigationTank, Sensors } from "./props";
+import { AirConditioner, Controller, IrrigationTank, Sensors, Vaporizer } from "./props";
 
 const dummy = new THREE.Object3D();
 const tmpColor = new THREE.Color();
@@ -46,6 +46,7 @@ export function RoomScene() {
       <Controller />
       <AirConditioner />
       <IrrigationTank />
+      <Vaporizer />
       <Sensors />
     </group>
   );
@@ -94,7 +95,7 @@ function LeafInstances({ items }: { items: LeafXForm[] }) {
     const mesh = ref.current;
     if (!mesh) return;
     const t = state.clock.elapsedTime;
-    const grow = 0.1 + 1.2 * story.growth; // wider range -> plants grow more
+    const grow = 0.2 + 0.6 * story.growth; // grows, but stays tidy at maturity
     const amp = 0.035 + story.agitation * 0.09;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];

@@ -73,9 +73,35 @@ canvas {
   background-image:
     linear-gradient(rgba(238, 242, 226, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(238, 242, 226, 0.04) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(120% 90% at 65% 35%, #000 20%, transparent 75%);
-  -webkit-mask-image: radial-gradient(120% 90% at 65% 35%, #000 20%, transparent 75%);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(120% 90% at 65% 35%, #000 15%, transparent 72%);
+  -webkit-mask-image: radial-gradient(120% 90% at 65% 35%, #000 15%, transparent 72%);
+}
+.cool-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(200, 224, 106, 0.1) 1px, transparent 1.4px);
+  background-size: 30px 30px;
+  mask-image: radial-gradient(80% 70% at 22% 55%, #000 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(80% 70% at 22% 55%, #000 0%, transparent 70%);
+}
+.cool-scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgba(238, 242, 226, 0.018) 3px,
+    rgba(238, 242, 226, 0.018) 4px
+  );
+  mask-image: linear-gradient(90deg, #000 0%, transparent 45%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 45%);
+}
+.cool-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 60% 40%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
 }
 @keyframes drift1 {
   50% {
@@ -449,6 +475,26 @@ canvas {
   font-weight: 500;
 }
 .trace-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.trace-chart {
+  padding: 0.9rem 1rem 0.6rem;
+  border-radius: 14px;
+  background: rgba(16, 22, 13, 0.72);
+  border: 1px solid var(--line);
+  width: fit-content;
+  will-change: opacity, transform;
+}
+.chart-title {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lime-ink);
+  margin-bottom: 0.5rem;
+}
+.metric-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;

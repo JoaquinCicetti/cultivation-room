@@ -46,6 +46,9 @@ export const acAccentMat = new THREE.MeshStandardMaterial({
   roughness: 0.3,
 });
 
+export const vaporizerMat = new THREE.MeshStandardMaterial({ color: 0x242a20, roughness: 0.5, metalness: 0.35 });
+export const vaporizerCapMat = new THREE.MeshStandardMaterial({ color: 0x3a4232, roughness: 0.4, metalness: 0.45 });
+
 export const sensorMat = new THREE.MeshStandardMaterial({ color: 0x33382f, roughness: 0.5, metalness: 0.3 });
 export const sensorLedMat = new THREE.MeshStandardMaterial({
   color: 0xc8e06a,

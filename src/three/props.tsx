@@ -3,8 +3,49 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 
 import * as mat from "./materials";
-import { AC_POS, CONTROLLER_POS, TANK_POS, type Vec3 } from "./sceneData";
+import { AC_POS, CONTROLLER_POS, TANK_POS, VAPORIZER_POS, type Vec3 } from "./sceneData";
 import { MEASURE_CHIPS, story } from "../scroll/story";
+
+// --- Vaporizer / humidifier with a rising mist plume ------------------------
+export function Vaporizer() {
+  const mist = useRef<THREE.Group>(null);
+  const puffs = useMemo(() => [0, 1, 2, 3, 4, 5].map((i) => ({ x: (i % 2 ? 1 : -1) * 0.03, base: i * 0.12 })), []);
+
+  useFrame((_, delta) => {
+    if (!mist.current) return;
+    for (const c of mist.current.children) {
+      const m = c as THREE.Mesh;
+      let y = m.position.y + delta * 0.32;
+      if (y > 0.75) y = 0;
+      m.position.y = y;
+      const f = THREE.MathUtils.clamp(1 - y / 0.75, 0, 1);
+      (m.material as THREE.MeshBasicMaterial).opacity = 0.14 * f;
+      m.scale.setScalar(0.5 + y * 1.6);
+    }
+  });
+
+  return (
+    <group position={VAPORIZER_POS}>
+      <mesh position={[0, 0.18, 0]} material={mat.vaporizerMat} castShadow>
+        <cylinderGeometry args={[0.12, 0.14, 0.36, 16]} />
+      </mesh>
+      <mesh position={[0, 0.37, 0]} material={mat.vaporizerCapMat}>
+        <cylinderGeometry args={[0.1, 0.12, 0.045, 16]} />
+      </mesh>
+      <mesh position={[0.05, 0.3, 0.1]} material={mat.sensorLedMat}>
+        <sphereGeometry args={[0.008, 8, 8]} />
+      </mesh>
+      <group ref={mist} position={[0, 0.41, 0]}>
+        {puffs.map((p, i) => (
+          <mesh key={i} position={[p.x, p.base, 0]}>
+            <sphereGeometry args={[0.07, 7, 6]} />
+            <meshBasicMaterial color={0xeef2ff} transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
 
 // --- Wall-mounted AC (mini-split) with animated airflow ---------------------
 export function AirConditioner() {

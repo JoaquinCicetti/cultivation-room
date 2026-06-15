@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { HEADLINES, NOTIFICATIONS, regRef, TIMELINE, TRACE_METRICS } from "../scroll/story";
 import { Qr } from "./Qr";
+import { MetricChart } from "./MetricChart";
 
 // 2D layer overlaid on the full-bleed scene: storytelling text LEFT, traceability
 // (QR → line → timeline → metrics) LEFT, toasts bottom-right, scroll indicator,
@@ -74,12 +75,18 @@ export function Overlay() {
         </div>
 
         <div className="trace-metrics">
-          {TRACE_METRICS.map((m, i) => (
-            <div key={i} className="tm" ref={regRef(`tm${i}`)} style={{ opacity: 0 }}>
-              <strong>{m.value}</strong>
-              <span>{m.label}</span>
-            </div>
-          ))}
+          <div className="trace-chart" ref={regRef("traceChart")} style={{ opacity: 0 }}>
+            <div className="chart-title">Rendimiento por ciclo</div>
+            <MetricChart />
+          </div>
+          <div className="metric-row">
+            {TRACE_METRICS.map((m, i) => (
+              <div key={i} className="tm" ref={regRef(`tm${i}`)} style={{ opacity: 0 }}>
+                <strong>{m.value}</strong>
+                <span>{m.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
