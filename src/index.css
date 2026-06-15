@@ -43,44 +43,92 @@ canvas {
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  /* a lit dark wall with purple ambience, brighter near the room */
-  background:
-    radial-gradient(90% 70% at 72% -5%, rgba(120, 80, 200, 0.3), transparent 60%),
-    radial-gradient(115% 90% at 76% 4%, #2b3326 0%, #1c2417 42%, #12180e 74%, #0d120a 100%);
+  /* a really dark wall the room is suspended in */
+  background: radial-gradient(110% 90% at 72% 8%, #10140d 0%, #0a0d08 55%, #060805 100%);
 }
-.cool-blob {
+/* purple lights floating smoothly behind the suspended room */
+.orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.75;
+  filter: blur(55px);
+  background: radial-gradient(circle, rgba(172, 108, 255, 0.62), transparent 70%);
+  opacity: 0.8;
+  will-change: transform;
 }
-.cool-blob-a {
-  /* purple grow-light glow behind the room */
-  width: 52vw;
-  height: 52vw;
-  right: 2vw;
-  top: -12vh;
-  background: radial-gradient(circle, rgba(168, 92, 255, 0.42), transparent 68%);
-  animation: drift1 24s ease-in-out infinite;
+.orb-1 {
+  width: 30vw;
+  height: 30vw;
+  left: 46%;
+  top: -8%;
+  animation: floatA 26s ease-in-out infinite;
 }
-.cool-blob-b {
-  /* softer purple glow lower-left, under the text */
-  width: 44vw;
-  height: 44vw;
-  left: -12vw;
-  bottom: -14vh;
-  background: radial-gradient(circle, rgba(140, 96, 230, 0.22), transparent 70%);
-  animation: drift2 28s ease-in-out infinite;
+.orb-2 {
+  width: 22vw;
+  height: 22vw;
+  left: 72%;
+  top: 14%;
+  background: radial-gradient(circle, rgba(140, 92, 240, 0.5), transparent 70%);
+  animation: floatB 32s ease-in-out infinite;
 }
-/* purple wall lights — broad glows that light the background wall */
-.cool-lights {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(46% 42% at 66% 0%, rgba(178, 118, 255, 0.5), transparent 68%),
-    radial-gradient(34% 46% at 6% 30%, rgba(158, 100, 255, 0.32), transparent 70%),
-    radial-gradient(30% 40% at 38% 6%, rgba(168, 110, 255, 0.34), transparent 70%);
-  filter: blur(26px);
+.orb-3 {
+  width: 16vw;
+  height: 16vw;
+  left: 58%;
+  top: 44%;
+  opacity: 0.45;
+  animation: floatC 30s ease-in-out infinite;
+}
+.orb-4 {
+  width: 26vw;
+  height: 26vw;
+  left: 84%;
+  top: -4%;
+  background: radial-gradient(circle, rgba(188, 130, 255, 0.55), transparent 70%);
+  animation: floatA 36s ease-in-out infinite reverse;
+}
+.orb-5 {
+  width: 20vw;
+  height: 20vw;
+  left: 14%;
+  top: 16%;
+  opacity: 0.4;
+  background: radial-gradient(circle, rgba(150, 100, 240, 0.5), transparent 70%);
+  animation: floatB 40s ease-in-out infinite;
+}
+.orb-6 {
+  width: 20vw;
+  height: 20vw;
+  left: 92%;
+  top: 46%;
+  opacity: 0.5;
+  animation: floatC 34s ease-in-out infinite reverse;
+}
+@keyframes floatA {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-3vw, 5vh) scale(1.14);
+  }
+}
+@keyframes floatB {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4vw, -4vh) scale(1.1);
+  }
+}
+@keyframes floatC {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(2vw, 4vh) scale(0.9);
+  }
 }
 /* faint vertical panel seams — reads as a wall surface */
 .cool-wall {

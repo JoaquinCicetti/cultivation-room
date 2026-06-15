@@ -5,6 +5,7 @@ import { PerformanceMonitor, Preload, Stats } from "@react-three/drei";
 import { RoomScene } from "./RoomScene";
 import { StoryDirector } from "./StoryDirector";
 import { Holograms } from "./Holograms";
+import { FloatingLights } from "./FloatingLights";
 
 export default function Scene() {
   const debug = useMemo(
@@ -28,6 +29,7 @@ export default function Scene() {
       />
 
       <StoryDirector />
+      <FloatingLights />
       <RoomScene />
       <Holograms />
       <Preload all />

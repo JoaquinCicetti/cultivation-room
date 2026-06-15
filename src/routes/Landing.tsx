@@ -27,13 +27,15 @@ export default function Landing() {
   return (
     <>
       <div className="cool-bg" aria-hidden>
-        <div className="cool-blob cool-blob-a" />
-        <div className="cool-blob cool-blob-b" />
+        <span className="orb orb-1" />
+        <span className="orb orb-2" />
+        <span className="orb orb-3" />
+        <span className="orb orb-4" />
+        <span className="orb orb-5" />
+        <span className="orb orb-6" />
         <div className="cool-wall" />
-        <div className="cool-lights" />
         <div className="cool-grid" />
         <div className="cool-dots" />
-        <div className="cool-scan" />
         <div className="cool-vignette" />
       </div>
 
