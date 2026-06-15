@@ -2,39 +2,32 @@ import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 
-import * as mat from "./materials";
 import { GROW_LIGHTS } from "./sceneData";
 import {
   clamp01,
-  IMPROVE_TAGS,
   lerp,
-  MEASURE_CHIPS,
+  METRICS,
   NOTIFICATIONS,
   scrollState,
+  seg,
+  sensorScreen,
   smooth,
   story,
-  TIMELINE,
   ui,
   updateStory,
 } from "../scroll/story";
 
-// Look well left of the room so it sits in the RIGHT of the full-bleed canvas,
-// leaving the left clear for the overlaid text.
+// Frame the room slightly right so the left stays clear for the overlaid text.
 const CAM_TARGET = new THREE.Vector3(-3.8, 1.3, 0);
+const BASE_ZOOM = 102;
+const projVec = new THREE.Vector3();
 
-const GROW_PURPLE = new THREE.Color(0xa85cff); // horticultural purple grow light
-const ALERT_RED = new THREE.Color(0xff3b2e);
-const gcol = new THREE.Color();
-
-// "Lights on" intro: grow lights stutter on like LED/fluorescent tubes.
-function flicker(x: number) {
-  if (x < 0.05) return 0;
-  if (x < 0.09) return 0.8;
-  if (x < 0.13) return 0.1;
-  if (x < 0.17) return 1;
-  if (x < 0.21) return 0.4;
-  return 1;
-}
+// whole-room alarm tint — the environment gradually reddens, no spotlights
+const BASE_AMBIENT = new THREE.Color(0xecebf4);
+const BASE_HEMI_SKY = new THREE.Color(0xeef0f8);
+const ALARM_RED = new THREE.Color(0xff2616);
+const tmpA = new THREE.Color();
+const tmpH = new THREE.Color();
 
 function setEl(key: string, opacity: number, ty = 0, scale = 1) {
   const el = ui[key];
@@ -48,14 +41,19 @@ function setEl(key: string, opacity: number, ty = 0, scale = 1) {
   if (ty !== 0 || scale !== 1) el.style.transform = `translate3d(0,${ty.toFixed(1)}px,0) scale(${scale.toFixed(3)})`;
 }
 
-const BASE_ZOOM = 102;
-
 export function StoryDirector() {
   const { scene, camera, size } = useThree();
+  const roomRef = useRef<THREE.Object3D | null>(null);
+  const startRef = useRef<number | null>(null);
+  const ambientRef = useRef<THREE.AmbientLight>(null);
+  const hemiRef = useRef<THREE.HemisphereLight>(null);
+  const redFillRef = useRef<THREE.DirectionalLight>(null);
+  const growRef = useRef<THREE.Group>(null);
 
-  // shift the rendered scene up 10% and right 5% (room sits higher-right)
+  // shift the rendered scene up 10% / right 5% (room sits higher-right)
   useLayoutEffect(() => {
     const cam = camera as THREE.OrthographicCamera;
+    cam.zoom = BASE_ZOOM;
     cam.setViewOffset(size.width, size.height, -0.05 * size.width, 0.1 * size.height, size.width, size.height);
     cam.updateProjectionMatrix();
     return () => {
@@ -64,16 +62,6 @@ export function StoryDirector() {
     };
   }, [camera, size.width, size.height]);
 
-  const ambientRef = useRef<THREE.AmbientLight>(null);
-  const hemiRef = useRef<THREE.HemisphereLight>(null);
-  const keyRef = useRef<THREE.DirectionalLight>(null);
-  const fillARef = useRef<THREE.DirectionalLight>(null);
-  const fillBRef = useRef<THREE.DirectionalLight>(null);
-  const growRefs = useRef<(THREE.PointLight | null)[]>([]);
-  const roomRef = useRef<THREE.Object3D | null>(null);
-  const startRef = useRef<number | null>(null);
-  const yaw = useRef(0);
-
   useFrame((state, delta) => {
     const k = 1 - Math.exp(-delta * 5.5);
     scrollState.current += (scrollState.target - scrollState.current) * k;
@@ -81,141 +69,150 @@ export function StoryDirector() {
     updateStory(p);
     const t = state.clock.elapsedTime;
 
-    // --- dramatic power-on (time-based, plays once) ---
+    // --- clean opening reveal: fade in from dark + a subtle settle/zoom-in ---
     if (startRef.current === null) startRef.current = t;
-    const pt = t - startRef.current;
-    const powerAll = smooth(clamp01((pt - 0.3) / (0.3 + GROW_LIGHTS.length * 0.25)));
-    const pBright = lerp(0.05, 1, powerAll); // starts near-dark -> bright
+    const rev = smooth(clamp01((t - startRef.current - 0.15) / 1.4));
+    setEl("boot", 1 - rev);
 
-    // --- floating diorama ---
+    // --- anchored room: slow, deliberate few-degree rotation (premium showcase) ---
     if (!roomRef.current) roomRef.current = scene.getObjectByName("room") ?? null;
     const room = roomRef.current;
     if (room) {
-      const targetYaw = story.focusYaw + Math.sin(t * 0.22) * 0.1;
-      yaw.current += (targetYaw - yaw.current) * (1 - Math.exp(-delta * 3));
-      room.rotation.y = yaw.current;
-      room.position.y = Math.sin(t * 0.5) * 0.05;
-      room.scale.setScalar(lerp(1, 0.82, story.finalP));
+      // settles its rotation and rises out of the top of frame during the
+      // traceability transition (camera stays fixed — the room leaves, not the cam)
+      room.rotation.y = Math.sin(t * 0.05) * 0.06 * (1 - story.traceIn);
+      room.position.y = lerp(0, 9.5, story.traceIn);
+      room.scale.setScalar(lerp(0.965, 1, rev) * lerp(1, 0.92, story.finalP));
+      room.visible = story.traceIn < 0.995; // fully exited → drop it (off-screen, reversible)
+    }
+    // the grow lights belong to the room — carry them up so no pools are left behind
+    if (growRef.current) {
+      growRef.current.position.y = lerp(0, 9.5, story.traceIn);
+      growRef.current.visible = story.traceIn < 0.995;
     }
 
-    // --- orthographic iso camera ---
+    // --- stable camera (no float / per-act drift) — subtle settle on load ---
     const cam = camera as THREE.OrthographicCamera;
-    const targetZoom = BASE_ZOOM * story.zoom;
-    if (Math.abs(cam.zoom - targetZoom) > 0.01) {
-      cam.zoom += (targetZoom - cam.zoom) * (1 - Math.exp(-delta * 3));
+    const targetZoom = BASE_ZOOM * lerp(0.94, 1, rev);
+    if (Math.abs(cam.zoom - targetZoom) > 0.03) {
+      cam.zoom = targetZoom;
       cam.updateProjectionMatrix();
     }
-    cam.position.set(9 + Math.sin(t * 0.18) * 0.12, 7, 9 + Math.cos(t * 0.16) * 0.12);
+    cam.position.set(9, 7, 9);
     cam.lookAt(CAM_TARGET);
-
-    // --- lights (brighter scene; white lights dim a bit so red reads on alarm) ---
-    const rf = story.roomFade;
-    const alertDim = 1 - 0.4 * story.alert;
-    if (ambientRef.current) ambientRef.current.intensity = story.ambient * pBright * alertDim;
-    if (hemiRef.current) hemiRef.current.intensity = 1.5 * rf * pBright * alertDim;
-    if (keyRef.current) keyRef.current.intensity = 2.2 * rf * pBright * alertDim;
-    if (fillARef.current) fillARef.current.intensity = 1.0 * rf * pBright * alertDim;
-    if (fillBRef.current) fillBRef.current.intensity = 0.7 * rf * pBright * alertDim;
-    // The CULTIVATION RACK LIGHTS turn red and brighter on alarm (no central blob).
-    gcol.copy(GROW_PURPLE).lerp(ALERT_RED, story.alert);
-    const growBase = 3.4 * rf * (1 + story.alert * 1.2);
-    const alarmPulse = 1 + Math.sin(t * 7) * 0.16 * story.alert;
-    for (let i = 0; i < growRefs.current.length; i++) {
-      const l = growRefs.current[i];
-      if (l) {
-        l.intensity = growBase * flicker(pt - (0.3 + i * 0.25)) * (1 + Math.sin(t * 1.3 + i) * 0.05) * alarmPulse;
-        l.color.copy(gcol);
-      }
-    }
-    mat.lightGlowMat.color.copy(gcol);
-    mat.lightGlowMat.emissive.copy(gcol);
-    mat.lightGlowMat.emissiveIntensity = (2.2 + story.alert * 2) * rf * powerAll;
-    mat.sensorLedMat.emissiveIntensity = 2.0 * rf * powerAll;
 
     // --- DOM: headlines (left, slide up) ---
     for (let i = 0; i < 5; i++) setEl(`hl${i}`, story.headline[i], (1 - story.headline[i]) * 16);
 
-    // --- DOM: holographic sensor readings ---
-    for (const c of MEASURE_CHIPS) {
-      if (c.id === "temp") {
-        setEl("chip.temp", story.fTemp);
-        const v = ui["val.temp"];
-        if (v) v.textContent = `${story.temp.toFixed(1)} °C`;
-        const chip = ui["chip.temp"];
-        if (chip) chip.style.setProperty("--accent", story.tempColorHex);
-      } else {
-        setEl(`chip.${c.id}`, story.fSensors);
-      }
-    }
-    IMPROVE_TAGS.forEach((tag) => setEl(`tag.${tag.id}`, story.fImprove));
-
-    // --- DOM: bottom-right notification toasts (hidden once traceability starts) ---
+    // --- DOM: notification toasts (hidden once traceability starts) ---
     for (let i = 0; i < NOTIFICATIONS.length; i++) {
-      const on = i < story.notif && p < 0.69;
+      const on = i < story.notif && p < 0.6;
       setEl(`toast${i}`, on ? 1 : 0, on ? 0 : 16);
     }
 
-    // --- DOM: intro / scroll hint / scrim ---
-    setEl("intro", story.introFade);
+    // --- DOM: brand mark morph (hero -> top-left header -> final) ---
+    const bm = ui["brandmark"];
+    if (bm) {
+      const k1 = 1 - smooth(clamp01(p / 0.09));
+      const k2 = smooth(story.finalP);
+      const big = Math.max(k1, k2);
+      const scale = 0.34 + 0.66 * big;
+      const tx = 12 * big;
+      const ty = (size.height * 0.3 - 26) * big;
+      bm.style.opacity = rev.toFixed(3);
+      bm.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${scale.toFixed(3)})`;
+    }
+    setEl("introTag", rev * (1 - smooth(clamp01(p / 0.045))));
     setEl("scrollHint", story.scrollHint);
     setEl("scrim", story.scrim);
 
-    // --- DOM: traceability dashboard (revealed card by card) ---
-    const traceVis = clamp01(story.traceP * 6) * clamp01(1 - story.finalP * 2.2);
-    setEl("traceWrap", traceVis);
-    const card = (k: string, v: number) => setEl(k, clamp01(v), (1 - clamp01(v)) * 14);
-    card("qr", story.qrP * 1.4);
-    card("subwindow", story.lineP * 2);
-    TIMELINE.forEach((_, i) => {
-      const o = clamp01((story.timelineP - i / TIMELINE.length) * 3);
-      setEl(`tl${i}`, o, (1 - o) * 8);
-    });
-    card("chartYield", story.chartsP * 1.6);
-    card("chartTemp", (story.chartsP - 0.18) * 1.6);
-    card("consumption", story.consumptionP * 1.5);
-    card("metricsCard", story.metricsP * 1.6);
+    // --- DOM: traceability — static left title + detaching/enlarging tablet ---
+    const traceOut = 1 - smooth(seg(story.p, 0.9, 0.95));
+    setEl("trace2Left", story.traceIn * traceOut, (1 - story.traceIn) * 18);
+    const tablet = ui["tablet"];
+    if (tablet) {
+      const W = size.width;
+      const H = size.height;
+      const tin = story.traceIn;
+      // interpolate from the on-wall panel rect to the large right-side device
+      const L = lerp(0.7 * W, 0.42 * W, tin);
+      const T = lerp(0.34 * H, 0.055 * H, tin);
+      const WD = lerp(0.14 * W, 0.55 * W, tin);
+      const HT = lerp(0.2 * H, 0.89 * H, tin);
+      tablet.style.left = `${L.toFixed(1)}px`;
+      tablet.style.top = `${T.toFixed(1)}px`;
+      tablet.style.width = `${WD.toFixed(1)}px`;
+      tablet.style.height = `${HT.toFixed(1)}px`;
+      const op = clamp01(seg(story.p, 0.61, 0.66)) * traceOut;
+      tablet.style.opacity = op.toFixed(3);
+      tablet.style.display = op < 0.01 ? "none" : "";
+    }
+    // internal report scroll: the page is "pinned", only the content moves
+    const content = ui["tabletContent"];
+    const screenEl = ui["tabletScreen"];
+    if (content && screenEl) {
+      const maxScroll = Math.max(0, content.scrollHeight - screenEl.clientHeight);
+      content.style.transform = `translateY(${(-story.traceScroll * maxScroll).toFixed(1)}px)`;
+    }
 
     // --- DOM: final ---
     setEl("final", story.finalP);
+
+    // --- whole-room alarm tint: ambient + sky redden, red bounce on surfaces ---
+    const red = story.alert * (1 - story.traceP);
+    if (ambientRef.current) ambientRef.current.color.copy(tmpA.copy(BASE_AMBIENT).lerp(ALARM_RED, red * 0.6));
+    if (hemiRef.current) hemiRef.current.color.copy(tmpH.copy(BASE_HEMI_SKY).lerp(ALARM_RED, red * 0.55));
+    if (redFillRef.current) redFillRef.current.intensity = red * 2.4;
+
+    // --- project sensor anchors -> screen px for the DOM leader lines ---
+    if (room) room.updateMatrixWorld();
+    for (let i = 0; i < METRICS.length; i++) {
+      const a = METRICS[i].anchor;
+      projVec.set(a[0], a[1], a[2]);
+      if (room) projVec.applyMatrix4(room.matrixWorld);
+      projVec.project(camera);
+      const s = sensorScreen[i];
+      s.x = (projVec.x * 0.5 + 0.5) * size.width;
+      s.y = (-projVec.y * 0.5 + 0.5) * size.height;
+      s.vis = projVec.z < 1 ? 1 : 0;
+    }
   });
 
+  // Clean architectural lighting (crisp soft key + bounce) under a realistic
+  // magenta horticultural grow glow. Cool neutral fills so the purple reads true.
   return (
     <>
-      <ambientLight ref={ambientRef} color={0xf3f6ea} intensity={0} />
-      <hemisphereLight ref={hemiRef} color={0xeef3df} groundColor={0xb9bfae} intensity={0} />
+      <ambientLight ref={ambientRef} color={0xecebf4} intensity={0.74} />
+      <hemisphereLight ref={hemiRef} color={0xeef0f8} groundColor={0x5e6066} intensity={0.74} />
       <directionalLight
-        ref={keyRef}
-        color={0xfff7e8}
-        intensity={0}
-        position={[6, 9, 5]}
+        color={0xfdf7ff}
+        intensity={1.95}
+        position={[5, 10, 6]}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-camera-left={-6}
-        shadow-camera-right={6}
-        shadow-camera-top={6}
-        shadow-camera-bottom={-6}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-7}
+        shadow-camera-right={7}
+        shadow-camera-top={7}
+        shadow-camera-bottom={-7}
         shadow-camera-near={0.5}
-        shadow-camera-far={26}
-        shadow-bias={-0.001}
-        shadow-normalBias={0.02}
+        shadow-camera-far={32}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
       />
-      {/* white multidirectional fill so room details read */}
-      <directionalLight ref={fillARef} color={0xffffff} intensity={0} position={[-6, 5, 8]} />
-      <directionalLight ref={fillBRef} color={0xf2f5ff} intensity={0} position={[8, 4, -7]} />
-      {GROW_LIGHTS.map((g, i) => (
-        <pointLight
-          key={i}
-          ref={(el) => {
-            growRefs.current[i] = el;
-          }}
-          color={0xa85cff}
-          intensity={0}
-          distance={4.8}
-          decay={1.3}
-          position={[g.x, g.y - 0.12, g.z]}
-        />
-      ))}
+      <directionalLight color={0xe6ecf6} intensity={0.62} position={[-6, 6, 8]} />
+      <directionalLight color={0xf0ecf6} intensity={0.44} position={[8, 5, -6]} />
+      {/* realistic magenta horticultural grow pools over each rack (rise with the room) */}
+      <group ref={growRef}>
+        {GROW_LIGHTS.map((g, i) => (
+          <group key={i}>
+            <pointLight color={0xc56fd0} intensity={1.7} distance={3.4} decay={1.7} position={[g.x, g.y - 0.18, g.z]} />
+            <pointLight color={0xd58fe0} intensity={0.85} distance={5} decay={1.5} position={[g.x, g.y - 0.5, g.z]} />
+          </group>
+        ))}
+      </group>
+      {/* red bounce fill (front) — reflects off walls/racks/floor during alarm */}
+      <directionalLight ref={redFillRef} color={0xff3a26} intensity={0} position={[2, 4, 9]} />
     </>
   );
 }

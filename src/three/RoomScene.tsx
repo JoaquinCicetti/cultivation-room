@@ -19,7 +19,7 @@ import {
   type XForm,
 } from "./sceneData";
 import { story } from "../scroll/story";
-import { AirConditioner, Controller, IrrigationTank, Sensors, Vaporizer } from "./props";
+import { AirConditioner, Controller, Infrastructure, IrrigationTank, Sensors, Vaporizer } from "./props";
 
 const dummy = new THREE.Object3D();
 const tmpColor = new THREE.Color();
@@ -32,12 +32,14 @@ export function RoomScene() {
   return (
     <group name="room">
       <RoomShell />
+      <CultivationFloor />
 
       <StaticInstances geometry={UNIT_BOX} material={mat.rackMat} items={data.rackBars} castShadow />
       <StaticInstances geometry={UNIT_BOX} material={mat.trayMaterial} items={data.trayParts} castShadow receiveShadow />
       <StaticInstances geometry={UNIT_BOX} material={mat.lightFixtureMat} items={data.lightBars} />
       <StaticInstances geometry={UNIT_BOX} material={mat.lightGlowMat} items={data.lightGlows} />
       <StaticInstances geometry={FOOT_GEO} material={mat.footMat} items={data.feet} />
+      <StaticInstances geometry={UNIT_BOX} material={mat.tubingMat} items={data.tubes} castShadow />
       <StaticInstances geometry={POT_GEO} material={mat.potMat} items={data.pots} castShadow />
       <StaticInstances geometry={CYL_GEO} material={mat.soilMat} items={data.soil} />
       <StaticInstances geometry={STEM_GEO} material={mat.stemMat} items={data.stems} />
@@ -48,6 +50,37 @@ export function RoomScene() {
       <IrrigationTank />
       <Vaporizer />
       <Sensors />
+      <Infrastructure />
+    </group>
+  );
+}
+
+// Dedicated cultivation-zone floor: dark polished epoxy with a thin painted
+// safety-line frame, sitting just above the darker surrounding facility floor.
+function CultivationFloor() {
+  const zw = ROOM_W - 0.16;
+  const zd = ROOM_D - 0.16;
+  const ex = ROOM_W / 2 - 0.12;
+  const ez = ROOM_D / 2 - 0.12;
+  const y = 0.122;
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.121, 0]} material={mat.epoxyMat} receiveShadow>
+        <planeGeometry args={[zw, zd]} />
+      </mesh>
+      {/* painted boundary line (4 thin strips) */}
+      <mesh position={[0, y, -ez]} material={mat.zoneTrimMat}>
+        <boxGeometry args={[zw, 0.004, 0.05]} />
+      </mesh>
+      <mesh position={[0, y, ez]} material={mat.zoneTrimMat}>
+        <boxGeometry args={[zw, 0.004, 0.05]} />
+      </mesh>
+      <mesh position={[-ex, y, 0]} material={mat.zoneTrimMat}>
+        <boxGeometry args={[0.05, 0.004, zd]} />
+      </mesh>
+      <mesh position={[ex, y, 0]} material={mat.zoneTrimMat}>
+        <boxGeometry args={[0.05, 0.004, zd]} />
+      </mesh>
     </group>
   );
 }
@@ -95,18 +128,19 @@ function LeafInstances({ items }: { items: LeafXForm[] }) {
     const mesh = ref.current;
     if (!mesh) return;
     const t = state.clock.elapsedTime;
-    const grow = 0.2 + 0.6 * story.growth; // grows, but stays tidy at maturity
-    const amp = 0.035 + story.agitation * 0.09;
+    const grow = 0.3 + 0.38 * story.growth; // gentle, believable growth (no ballooning)
+    const amp = 0.016 + story.agitation * 0.05; // calm, deliberate — only stirs under airflow
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       const s = it.baseScale * grow;
       dummy.position.set(it.position[0], it.position[1], it.position[2]);
+      // oriented, flattened leaf blades with a gentle airflow sway
       dummy.rotation.set(
-        Math.cos(t * 0.7 + it.phaseZ * 10) * amp,
-        0,
+        it.tilt + Math.cos(t * 0.7 + it.phaseZ * 10) * amp,
+        it.yaw,
         Math.sin(t * 0.9 + it.phaseX * 10) * amp,
       );
-      dummy.scale.set(s, s, s);
+      dummy.scale.set(s * 1.35, s * 0.5, s * 0.95);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     }
@@ -116,17 +150,10 @@ function LeafInstances({ items }: { items: LeafXForm[] }) {
   return <instancedMesh ref={ref} args={[LEAF_GEO, mat.leafMat, items.length]} />;
 }
 
-// Light platform + low back & left walls (open-top miniature).
+// Back & left facility walls (the room sits on the continuous floor from Scene).
 function RoomShell() {
   return (
     <group>
-      <mesh position={[0, 0.06, 0]} material={mat.floorMat} castShadow receiveShadow>
-        <boxGeometry args={[ROOM_W, 0.12, ROOM_D]} />
-      </mesh>
-      {/* platform base lip so the diorama reads as a floating object */}
-      <mesh position={[0, -0.02, 0]} material={mat.platformMat}>
-        <boxGeometry args={[ROOM_W + 0.3, 0.06, ROOM_D + 0.3]} />
-      </mesh>
       <mesh position={[0, ROOM_H / 2 + 0.12, -ROOM_D / 2 + WALL_THICK / 2]} material={mat.wallMat} receiveShadow>
         <boxGeometry args={[ROOM_W, ROOM_H, WALL_THICK]} />
       </mesh>
