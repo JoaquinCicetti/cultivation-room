@@ -29,6 +29,8 @@ export default function Landing() {
       <div className="cool-bg" aria-hidden>
         <div className="cool-blob cool-blob-a" />
         <div className="cool-blob cool-blob-b" />
+        <div className="cool-wall" />
+        <div className="cool-lights" />
         <div className="cool-grid" />
         <div className="cool-dots" />
         <div className="cool-scan" />
