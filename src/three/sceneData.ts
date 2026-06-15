@@ -33,6 +33,8 @@ export interface LeafXForm {
   color: number;
   phaseX: number;
   phaseZ: number;
+  yaw: number; // outward aim around Y
+  tilt: number; // outward/upward tilt
 }
 
 interface RackDef {
@@ -49,9 +51,9 @@ interface RackDef {
 
 // Three racks, widely spaced. rackA (front-center) carries the hero plant.
 export const RACKS: RackDef[] = [
-  { name: "rackA", x: 0.4, z: 0.9, w: 2.2, d: 0.8, axis: "x", plantCount: 3, lightWidth: 1.9, lightY: 1.95 },
-  { name: "rackB", x: -0.6, z: -1.7, w: 2.8, d: 0.85, axis: "x", plantCount: 4, lightWidth: 2.5, lightY: 2.0 },
-  { name: "rackC", x: -2.7, z: -0.1, w: 0.8, d: 1.7, axis: "z", plantCount: 3, lightWidth: 0.6, lightY: 1.9 },
+  { name: "rackA", x: 0.4, z: 0.9, w: 2.2, d: 0.8, axis: "x", plantCount: 4, lightWidth: 1.9, lightY: 1.95 },
+  { name: "rackB", x: -0.6, z: -1.7, w: 2.8, d: 0.85, axis: "x", plantCount: 5, lightWidth: 2.5, lightY: 2.0 },
+  { name: "rackC", x: -2.7, z: -0.1, w: 0.8, d: 1.7, axis: "z", plantCount: 4, lightWidth: 0.6, lightY: 1.9 },
 ];
 
 export interface GrowLightDef {
@@ -75,6 +77,7 @@ export interface InstanceData {
   lightBars: XForm[];
   lightGlows: XForm[];
   feet: XForm[];
+  tubes: XForm[]; // irrigation tubing + cable conduit (tubingMat boxes)
   pots: XForm[];
   soil: XForm[];
   stems: XForm[];
@@ -90,6 +93,7 @@ export function buildInstanceData(): InstanceData {
     lightBars: [],
     lightGlows: [],
     feet: [],
+    tubes: [],
     pots: [],
     soil: [],
     stems: [],
@@ -128,11 +132,20 @@ export function buildInstanceData(): InstanceData {
       data.rackBars.push({ position: [x + ax, (barY + TOP_RAIL_Y) / 2, z], scale: [0.022, barY - TOP_RAIL_Y, 0.022] });
     }
 
-    // plants (single row, generously spaced, larger & healthier)
+    // irrigation supply tube along the back of the tray + a cable conduit on a leg
+    const backZ = z - d / 2 + 0.06;
+    const tubeY = TOP_RAIL_Y + TRAY_H + 0.02;
+    data.tubes.push({ position: [x, tubeY, backZ], scale: [w - 0.12, 0.02, 0.02] });
+    data.tubes.push({
+      position: [x - w / 2 + 0.04, TABLE_H / 2 + 0.12, z - d / 2 + 0.01],
+      scale: [0.02, TABLE_H, 0.02],
+    });
+
+    // plants (single row, generously spaced; fuller, structured canopies)
     for (let p = 0; p < rack.plantCount; p++) {
-      const potR = 0.055 + Math.random() * 0.02;
-      const potH = 0.08 + Math.random() * 0.03;
-      const plantSize = 0.1 + Math.random() * 0.06;
+      const potR = 0.06 + Math.random() * 0.02;
+      const potH = 0.085 + Math.random() * 0.03;
+      const plantSize = 0.115 + Math.random() * 0.05;
 
       let posX: number;
       let posZ: number;
@@ -145,25 +158,36 @@ export function buildInstanceData(): InstanceData {
         posX = x;
         posZ = z + (-spread / 2 + p * (spread / Math.max(rack.plantCount - 1, 1)));
       }
+      const baseY = SURFACE_Y + potH;
 
       data.pots.push({ position: [posX, SURFACE_Y + potH / 2, posZ], scale: [potR, potH, potR] });
       data.soil.push({ position: [posX, SURFACE_Y + potH - 0.02, posZ], scale: [potR * 0.9, 0.02, potR * 0.9] });
-      data.stems.push({ position: [posX, SURFACE_Y + potH + plantSize * 0.4, posZ], scale: [1, plantSize * 0.8, 1] });
+      data.stems.push({ position: [posX, baseY + plantSize * 0.45, posZ], scale: [1, plantSize * 0.95, 1] });
 
+      // drip emitter / stake at the pot, fed from the supply tube
+      data.tubes.push({ position: [posX, (tubeY + baseY) / 2, backZ], scale: [0.011, tubeY - baseY, 0.011] });
+      data.tubes.push({ position: [posX + potR * 0.5, baseY + 0.05, posZ], scale: [0.009, 0.12, 0.009] });
+
+      // dense leafy canopy: phyllotaxis spiral, wider/fuller at the base
       const tint = LEAF_TINTS[p % 3];
-      const plantBaseY = SURFACE_Y + potH;
-      const leafCount = 4 + Math.floor(Math.random() * 4);
+      const tintAlt = LEAF_TINTS[(p + 1) % 3];
+      const leafCount = 28 + Math.floor(Math.random() * 14);
       for (let i = 0; i < leafCount; i++) {
-        const size = plantSize * (0.55 + Math.random() * 0.5);
-        const lx = (Math.random() - 0.5) * plantSize * 0.9;
-        const ly = plantSize * 0.45 + Math.random() * plantSize * 0.7;
-        const lz = (Math.random() - 0.5) * plantSize * 0.9;
+        const tier = i / leafCount;
+        const ang = i * 2.399963; // golden angle
+        const radius = plantSize * (0.7 - tier * 0.4) * (0.7 + Math.random() * 0.5);
+        const lx = Math.cos(ang) * radius;
+        const lz = Math.sin(ang) * radius;
+        const ly = plantSize * (0.14 + tier * 0.9) + Math.random() * plantSize * 0.12;
+        const size = plantSize * (0.42 + (1 - tier) * 0.36) * (0.72 + Math.random() * 0.4);
         data.leaves.push({
-          position: [posX + lx, plantBaseY + ly, posZ + lz],
+          position: [posX + lx, baseY + ly, posZ + lz],
           baseScale: size,
-          color: tint,
+          color: Math.random() < 0.3 ? tintAlt : tint,
           phaseX: lx,
           phaseZ: lz,
+          yaw: ang,
+          tilt: 0.35 + tier * 0.75,
         });
       }
     }

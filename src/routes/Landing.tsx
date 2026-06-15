@@ -35,13 +35,8 @@ export default function Landing() {
         </Suspense>
       </div>
 
-      {/* full-screen 2D layer (left text, toasts, trace, final) */}
+      {/* full-screen 2D layer (left text, toasts, trace, final, brand header) */}
       <Overlay />
-
-      <a className="brand" href="/">
-        <img src="/logo.svg" alt="Growcast" width={26} height={26} />
-        <span>Growcast</span>
-      </a>
     </>
   );
 }

@@ -2,8 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 
 import Landing from "./routes/Landing";
 
-// Footer routes share one lazy placeholder Page (code-split).
+// Lazy, code-split routes.
 const lazyPage = async () => ({ Component: (await import("./routes/Page")).default });
+const lazyLegal = async () => ({ Component: (await import("./routes/Legal")).default });
 
 export const router = createBrowserRouter([
   { path: "/", element: <Landing /> },
@@ -13,6 +14,6 @@ export const router = createBrowserRouter([
   },
   { path: "/faqs", lazy: lazyPage },
   { path: "/testimonios", lazy: lazyPage },
-  { path: "/privacidad", lazy: lazyPage },
-  { path: "/terminos", lazy: lazyPage },
+  { path: "/privacidad", lazy: lazyLegal },
+  { path: "/terminos", lazy: lazyLegal },
 ]);
