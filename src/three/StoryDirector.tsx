@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 
@@ -14,7 +14,6 @@ import {
   smooth,
   story,
   TIMELINE,
-  TRACE_METRICS,
   ui,
   updateStory,
 } from "../scroll/story";
@@ -52,7 +51,19 @@ function setEl(key: string, opacity: number, ty = 0, scale = 1) {
 const BASE_ZOOM = 102;
 
 export function StoryDirector() {
-  const { scene, camera } = useThree();
+  const { scene, camera, size } = useThree();
+
+  // shift the rendered scene up 10% and right 5% (room sits higher-right)
+  useLayoutEffect(() => {
+    const cam = camera as THREE.OrthographicCamera;
+    cam.setViewOffset(size.width, size.height, -0.05 * size.width, 0.1 * size.height, size.width, size.height);
+    cam.updateProjectionMatrix();
+    return () => {
+      cam.clearViewOffset();
+      cam.updateProjectionMatrix();
+    };
+  }, [camera, size.width, size.height]);
+
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const keyRef = useRef<THREE.DirectionalLight>(null);
@@ -136,40 +147,33 @@ export function StoryDirector() {
         setEl(`chip.${c.id}`, story.fSensors);
       }
     }
-    IMPROVE_TAGS.forEach((tag, i) => {
-      const stag = clamp01((p - (0.655 + i * 0.012)) / 0.04);
-      setEl(`tag.${tag.id}`, story.fImprove * stag);
-    });
+    IMPROVE_TAGS.forEach((tag) => setEl(`tag.${tag.id}`, story.fImprove));
 
     // --- DOM: bottom-right notification toasts (hidden once traceability starts) ---
     for (let i = 0; i < NOTIFICATIONS.length; i++) {
-      const on = i < story.notif && p < 0.76;
+      const on = i < story.notif && p < 0.69;
       setEl(`toast${i}`, on ? 1 : 0, on ? 0 : 16);
     }
 
-    // --- DOM: scroll hint + scrim ---
+    // --- DOM: intro / scroll hint / scrim ---
+    setEl("intro", story.introFade);
     setEl("scrollHint", story.scrollHint);
     setEl("scrim", story.scrim);
 
-    // --- DOM: traceability QR -> line -> timeline -> metrics ---
+    // --- DOM: traceability dashboard (revealed card by card) ---
     const traceVis = clamp01(story.traceP * 6) * clamp01(1 - story.finalP * 2.2);
     setEl("traceWrap", traceVis);
-    setEl("qr", story.qrP);
-    const line = ui["traceLine"];
-    if (line) {
-      line.style.opacity = (story.lineP * (1 - story.finalP)).toFixed(3);
-      line.style.transform = `scaleX(${story.lineP.toFixed(3)})`;
-    }
-    setEl("subwindow", clamp01(story.lineP * 2));
+    const card = (k: string, v: number) => setEl(k, clamp01(v), (1 - clamp01(v)) * 14);
+    card("qr", story.qrP * 1.4);
+    card("subwindow", story.lineP * 2);
     TIMELINE.forEach((_, i) => {
       const o = clamp01((story.timelineP - i / TIMELINE.length) * 3);
       setEl(`tl${i}`, o, (1 - o) * 8);
     });
-    setEl("traceChart", clamp01(story.metricsP * 1.8), (1 - clamp01(story.metricsP * 1.8)) * 10);
-    TRACE_METRICS.forEach((_, i) => {
-      const o = clamp01((story.metricsP - 0.25 - i / TRACE_METRICS.length) * 3);
-      setEl(`tm${i}`, o, (1 - o) * 10);
-    });
+    card("chartYield", story.chartsP * 1.6);
+    card("chartTemp", (story.chartsP - 0.18) * 1.6);
+    card("consumption", story.consumptionP * 1.5);
+    card("metricsCard", story.metricsP * 1.6);
 
     // --- DOM: final ---
     setEl("final", story.finalP);

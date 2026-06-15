@@ -1,20 +1,34 @@
 import { Link } from "react-router-dom";
 
-import { HEADLINES, NOTIFICATIONS, regRef, TIMELINE, TRACE_METRICS } from "../scroll/story";
-import { LogoReveal } from "./LogoReveal";
-import { ContactButton } from "./contact/ContactButton";
+import {
+  CONSUMPTION,
+  HEADLINES,
+  INTRO,
+  NOTIFICATIONS,
+  regRef,
+  TEMP_SERIES,
+  TIMELINE,
+  TRACE_METRICS,
+  YIELD_SERIES,
+} from "../scroll/story";
 import { Qr } from "./Qr";
 import { MetricChart } from "./MetricChart";
 
-// 2D layer overlaid on the full-bleed scene: storytelling text LEFT, traceability
-// (QR → line → timeline → metrics) LEFT, toasts bottom-right, scroll indicator,
-// and a left veil for legibility. Sensor readings live on the room as holograms.
+const WHATSAPP = "https://wa.me/5491100000000?text=Hola%20Growcast";
+
 export function Overlay() {
   return (
     <div className="overlay">
       <div className="story-scrim" ref={regRef("scrim")} style={{ opacity: 0 }} />
 
-      {/* LEFT — storytelling */}
+      {/* INTRO — smooth opening */}
+      <div className="intro" ref={regRef("intro")}>
+        <img className="intro-logo" src="/logo.svg" alt="Growcast" width={56} height={56} />
+        <h1 className="intro-brand">{INTRO.brand}</h1>
+        <p className="intro-tag">{INTRO.tagline}</p>
+      </div>
+
+      {/* LEFT — section storytelling */}
       <div className="text-col">
         {HEADLINES.map((h, i) => (
           <div key={i} className="headline" ref={regRef(`hl${i}`)} style={{ opacity: 0 }}>
@@ -32,7 +46,7 @@ export function Overlay() {
         <span className="scroll-chevron" />
       </div>
 
-      {/* BOTTOM-RIGHT — notification toasts */}
+      {/* notification toasts */}
       <div className="toasts">
         {NOTIFICATIONS.map((n, i) => (
           <div key={i} className={`toast toast-${n.kind}`} ref={regRef(`toast${i}`)} style={{ opacity: 0 }}>
@@ -45,24 +59,21 @@ export function Overlay() {
         ))}
       </div>
 
-      {/* TRACEABILITY (left) — heading, then qr -> line -> timeline, then metrics */}
-      <div className="trace-wrap" ref={regRef("traceWrap")} style={{ opacity: 0 }}>
-        <div className="trace-head">
-          <span className="kicker">05 · Trazabilidad</span>
-          <h2>Trazabilidad total</h2>
-          <p>Del dato del sensor al historial verificable de todo el ciclo.</p>
+      {/* TRACEABILITY — full-screen dashboard */}
+      <div className="trace-dash" ref={regRef("traceWrap")} style={{ opacity: 0 }}>
+        <div className="dash-head">
+          <span className="kicker">Trazabilidad</span>
+          <h2>Historial verificable del cultivo</h2>
         </div>
-        <div className="trace-stage">
-          <div className="qr-card" ref={regRef("qr")} style={{ opacity: 0 }}>
-            <div className="qr-cap">Registro del cultivo</div>
-            <Qr size={138} />
-            <div className="qr-meta">Planta #2481 · Lote A-204</div>
+        <div className="dash-grid">
+          <div className="card card-qr" ref={regRef("qr")} style={{ opacity: 0 }}>
+            <div className="card-cap">Registro del cultivo</div>
+            <Qr size={116} />
+            <div className="card-meta">Planta #2481 · Lote A-204</div>
           </div>
 
-          <span className="trace-line" ref={regRef("traceLine")} style={{ opacity: 0 }} />
-
-          <div className="subwindow" ref={regRef("subwindow")} style={{ opacity: 0 }}>
-            <div className="sub-title">Historial del ciclo</div>
+          <div className="card card-timeline" ref={regRef("subwindow")} style={{ opacity: 0 }}>
+            <div className="card-cap">Historial del ciclo</div>
             <div className="timeline">
               {TIMELINE.map((it, i) => (
                 <div key={i} className="tl-item" ref={regRef(`tl${i}`)} style={{ opacity: 0 }}>
@@ -73,16 +84,35 @@ export function Overlay() {
               ))}
             </div>
           </div>
-        </div>
 
-        <div className="trace-metrics">
-          <div className="trace-chart" ref={regRef("traceChart")} style={{ opacity: 0 }}>
-            <div className="chart-title">Rendimiento por ciclo</div>
-            <MetricChart />
+          <div className="card card-chart" ref={regRef("chartYield")} style={{ opacity: 0 }}>
+            <div className="card-cap">Rendimiento por ciclo</div>
+            <MetricChart data={YIELD_SERIES} color="#c8e06a" />
           </div>
-          <div className="metric-row">
-            {TRACE_METRICS.map((m, i) => (
-              <div key={i} className="tm" ref={regRef(`tm${i}`)} style={{ opacity: 0 }}>
+
+          <div className="card card-chart" ref={regRef("chartTemp")} style={{ opacity: 0 }}>
+            <div className="card-cap">Temperatura ambiente · 9 días</div>
+            <MetricChart data={TEMP_SERIES} color="#9c6cff" />
+          </div>
+
+          <div className="card card-consumption" ref={regRef("consumption")} style={{ opacity: 0 }}>
+            <div className="card-cap">Consumo de insumos</div>
+            <div className="bars">
+              {CONSUMPTION.map((c) => (
+                <div key={c.label} className="bar-row">
+                  <span className="bar-label">{c.label}</span>
+                  <span className="bar">
+                    <i style={{ width: `${Math.round(c.pct * 100)}%` }} />
+                  </span>
+                  <strong className="bar-value">{c.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card card-metrics" ref={regRef("metricsCard")} style={{ opacity: 0 }}>
+            {TRACE_METRICS.map((m) => (
+              <div key={m.label} className="tm">
                 <strong>{m.value}</strong>
                 <span>{m.label}</span>
               </div>
@@ -91,17 +121,34 @@ export function Overlay() {
         </div>
       </div>
 
-      {/* FINAL — left-aligned */}
+      {/* ENDING */}
       <div className="final" ref={regRef("final")} style={{ opacity: 0 }}>
-        <LogoReveal className="final-logo" size={72} />
-        <h2 className="final-word">Growcast</h2>
-        <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
-        <div className="final-cta-row">
-          <Link className="cta" to="/catalog">
-            Explorar Growcast →
-          </Link>
-          <ContactButton label="Contacto" className="cta-ghost" />
+        <div className="final-grid">
+          <div className="final-main">
+            <img className="final-logo" src="/logo.svg" alt="Growcast" width={58} height={58} />
+            <h2 className="final-word">Growcast</h2>
+            <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
+            <Link className="cta" to="/catalog">
+              Solicitar demo →
+            </Link>
+          </div>
+          <nav className="final-nav" aria-label="Secciones">
+            <span className="nav-label">Explorar</span>
+            <Link to="/catalog">Catálogo</Link>
+            <Link to="/faqs">Preguntas frecuentes</Link>
+            <Link to="/testimonios">Testimonios</Link>
+          </nav>
         </div>
+        <footer className="final-footer">
+          <a className="wa-cta" href={WHATSAPP} target="_blank" rel="noreferrer">
+            <span className="wa-dot" /> Escribinos por WhatsApp
+          </a>
+          <div className="foot-links">
+            <Link to="/privacidad">Política de privacidad</Link>
+            <Link to="/terminos">Términos y condiciones</Link>
+            <span className="foot-copy">© {new Date().getFullYear()} Growcast</span>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -16,11 +16,7 @@ export const band = (p: number, a: number, b: number, fi = 0.18, fo = 0.18) => {
   return clamp01(Math.min(t / fi, 1, (1 - t) / fo));
 };
 
-export const COLORS = {
-  accent: "#c8e06a",
-  amber: "#e8b34a",
-  red: "#e2543a",
-};
+export const COLORS = { accent: "#c8e06a", amber: "#e8b34a", red: "#e2543a" };
 
 export const scrollState = { target: 0, current: 0 };
 
@@ -29,7 +25,13 @@ export const regRef = (key: string) => (el: HTMLElement | null) => {
   ui[key] = el;
 };
 
-// ---- holographic sensor readings (anchored on the room) -------------------
+// ---- opening ---------------------------------------------------------------
+export const INTRO = {
+  brand: "Growcast",
+  tagline: "Cultivo observable, automatizado y trazable.",
+};
+
+// ---- holographic sensor readings (anchored on the room) --------------------
 export const MEASURE_CHIPS = [
   { id: "temp", label: "Temperatura", value: "24.8 °C", anchor: [1.45, 1.55, -2.2] },
   { id: "hum", label: "Humedad", value: "63 %", anchor: [-2.35, 1.4, 0.1] },
@@ -37,17 +39,17 @@ export const MEASURE_CHIPS = [
   { id: "ph", label: "pH", value: "6.1", anchor: [-2.55, 0.95, -1.55] },
 ] as const;
 
-// ---- single ID holo on the hero plant (links to its traceability record) --
+// ---- single ID holo on the hero plant (the traceability hook) --------------
 export const IMPROVE_TAGS = [{ id: "id", label: "Planta #2481", anchor: [0.6, 1.62, 0.95] }] as const;
 
 // ---- bottom-right notification toasts -------------------------------------
 export const NOTIFICATIONS = [
-  { title: "Temperatura alta", desc: "28.4 °C · supera el umbral", kind: "warn", at: 0.31 },
-  { title: "Enfriamiento activado", desc: "Climatización en marcha", kind: "action", at: 0.46 },
-  { title: "Temperatura normalizada", desc: "24.9 °C · dentro de rango", kind: "ok", at: 0.55 },
+  { title: "Temperatura alta", desc: "28.4 °C · supera el umbral", kind: "warn", at: 0.3 },
+  { title: "Enfriamiento activado", desc: "Climatización en marcha", kind: "action", at: 0.44 },
+  { title: "Temperatura normalizada", desc: "24.9 °C · dentro de rango", kind: "ok", at: 0.52 },
 ] as const;
 
-// ---- traceability sub-window data -----------------------------------------
+// ---- traceability dashboard data ------------------------------------------
 export const TIMELINE = [
   { day: "Día 1", label: "Trasplante" },
   { day: "Día 12", label: "Primer riego automatizado" },
@@ -64,7 +66,18 @@ export const TRACE_METRICS = [
   { value: "1.284", label: "Eventos registrados" },
 ];
 
-// ---- professional storytelling (left, over the scene) ---------------------
+// yield per cycle (normalized) and ambient temperature over the last days
+export const YIELD_SERIES = [0.32, 0.42, 0.38, 0.55, 0.64, 0.6, 0.74, 0.82, 0.9];
+export const TEMP_SERIES = [0.45, 0.5, 0.62, 0.85, 0.7, 0.55, 0.48, 0.5, 0.46];
+
+// consumption of the main supplies
+export const CONSUMPTION = [
+  { label: "Agua", value: "1.240 L", pct: 0.74 },
+  { label: "Nutrientes", value: "86 L", pct: 0.46 },
+  { label: "Energía", value: "312 kWh", pct: 0.62 },
+];
+
+// ---- professional storytelling (left, over the scene) ----------------------
 export const HEADLINES = [
   {
     k: "01 · Medición",
@@ -85,44 +98,38 @@ export const HEADLINES = [
     lead: "Ante una alerta, la climatización se activa sola y devuelve el ambiente a su rango óptimo.",
   },
   {
-    k: "04 · Contexto",
-    h: "Contexto por planta",
-    s: "Historial de ambiente, nutrición, riego y rendimiento, planta por planta.",
-    lead: "Cada ejemplar acumula su propia historia: lote, genética, programa de riego y días de ciclo.",
-  },
-  {
-    k: "05 · Trazabilidad",
-    h: "Trazabilidad total",
-    s: "Del dato del sensor al historial verificable de todo el ciclo.",
-    lead: "Todo queda registrado y disponible al instante en un pasaporte digital del cultivo.",
+    k: "04 · Trazabilidad",
+    h: "Cada planta, trazada",
+    s: "Cada ejemplar guarda su historia completa, de la semilla a la cosecha.",
+    lead: "Lote, genética, programa de riego y días de ciclo quedan asociados a cada planta.",
   },
 ];
 
 export const HERO_POS: [number, number, number] = [0.6, 1.18, 0.95];
 
 // ---------------------------------------------------------------------------
-// Phase windows (progress 0..1). Traceability is wide for its sub-scroll.
+// Phase windows. Intro at the start; the traceability dashboard is wide so it
+// stays on screen longer.
 // ---------------------------------------------------------------------------
 function tempAt(p: number) {
-  if (p < 0.22) return 24.8;
-  if (p < 0.37) return lerp(24.8, 28.4, smooth(seg(p, 0.22, 0.37)));
-  if (p < 0.43) return 28.4;
-  if (p < 0.57) return lerp(28.4, 24.9, smooth(seg(p, 0.43, 0.57)));
+  if (p < 0.24) return 24.8;
+  if (p < 0.36) return lerp(24.8, 28.4, smooth(seg(p, 0.24, 0.36)));
+  if (p < 0.41) return 28.4;
+  if (p < 0.53) return lerp(28.4, 24.9, smooth(seg(p, 0.41, 0.53)));
   return 24.9;
 }
 function growthAt(p: number) {
-  // wider range -> plants visibly grow through the cycle
-  if (p < 0.13) return 0.22;
-  if (p < 0.22) return lerp(0.22, 0.42, smooth(seg(p, 0.13, 0.22)));
-  if (p < 0.57) return lerp(0.42, 0.66, smooth(seg(p, 0.22, 0.57)));
-  if (p < 0.7) return lerp(0.66, 1.0, smooth(seg(p, 0.57, 0.7)));
+  if (p < 0.16) return 0.22;
+  if (p < 0.24) return lerp(0.22, 0.42, smooth(seg(p, 0.16, 0.24)));
+  if (p < 0.53) return lerp(0.42, 0.66, smooth(seg(p, 0.24, 0.53)));
+  if (p < 0.6) return lerp(0.66, 1.0, smooth(seg(p, 0.53, 0.6)));
   return 1.0;
 }
 function fanAt(p: number) {
-  if (p < 0.43) return 0;
-  if (p < 0.49) return smooth(seg(p, 0.43, 0.49));
-  if (p < 0.66) return 1;
-  return lerp(1, 0.22, smooth(seg(p, 0.66, 0.78)));
+  if (p < 0.41) return 0;
+  if (p < 0.47) return smooth(seg(p, 0.41, 0.47));
+  if (p < 0.6) return 1;
+  return lerp(1, 0.22, smooth(seg(p, 0.6, 0.72)));
 }
 
 const cGreen = new THREE.Color(COLORS.accent);
@@ -148,18 +155,19 @@ export const story = {
   roomFade: 1,
   focusYaw: 0,
   zoom: 1,
-  // sections
   traceP: 0,
   finalP: 0,
-  notif: 0, // count of active toasts
-  // holо fades
-  fSensors: 0, // hum/co2/ec/ph holos (MEASURE only)
-  fTemp: 0, // temp holo (MEASURE..CONTROL)
-  fImprove: 0, // context holos
-  // traceability sub-progress
+  introFade: 1,
+  notif: 0,
+  fSensors: 0,
+  fTemp: 0,
+  fImprove: 0,
+  // traceability dashboard sub-progress
   qrP: 0,
   lineP: 0,
   timelineP: 0,
+  chartsP: 0,
+  consumptionP: 0,
   metricsP: 0,
   scrim: 0,
   scrollHint: 1,
@@ -174,43 +182,42 @@ export function updateStory(p: number) {
   story.growth = growthAt(p);
   story.fan = fanAt(p);
   story.agitation = story.fan;
-  story.traceP = seg(p, 0.77, 0.94);
-  story.finalP = seg(p, 0.94, 1.0);
+  story.traceP = seg(p, 0.7, 0.93);
+  story.finalP = seg(p, 0.93, 1.0);
 
-  // notifications revealed by threshold
+  // intro -> story
+  story.introFade = 1 - smooth(seg(p, 0.05, 0.09));
+  story.scrollHint = 1 - smooth(seg(p, 0.004, 0.03));
+
   let n = 0;
   for (const t of NOTIFICATIONS) if (p >= t.at) n++;
   story.notif = n;
 
-  // diorama motion
-  const toAC = smooth(seg(p, 0.39, 0.5));
-  const fromAC = smooth(seg(p, 0.59, 0.7));
+  const toAC = smooth(seg(p, 0.37, 0.47));
+  const fromAC = smooth(seg(p, 0.56, 0.66));
   story.focusYaw = 0.32 * toAC * (1 - fromAC) - 0.1 * fromAC;
-  story.zoom = 1 + 0.12 * smooth(seg(p, 0.62, 0.74));
+  story.zoom = 1 + 0.1 * smooth(seg(p, 0.58, 0.69));
 
-  // holographic readings
-  story.fSensors = band(p, 0.02, 0.2, 0.25, 0.3);
-  story.fTemp = band(p, 0.02, 0.62, 0.1, 0.1);
-  story.fImprove = band(p, 0.65, 0.77, 0.2, 0.25) * (1 - story.traceP);
+  story.fSensors = band(p, 0.08, 0.2, 0.25, 0.3);
+  story.fTemp = band(p, 0.08, 0.56, 0.1, 0.1);
+  story.fImprove = band(p, 0.6, 0.71, 0.2, 0.25) * (1 - story.traceP);
 
-  // headlines (left, over the scene) — the first is visible from the very start
-  story.headline[0] = 1 - smooth(seg(p, 0.1, 0.18));
-  story.headline[1] = band(p, 0.22, 0.39);
-  story.headline[2] = band(p, 0.43, 0.6);
-  story.headline[3] = band(p, 0.65, 0.78);
-  // section 5's text lives inside the traceability panel (above its timeline)
+  story.headline[0] = band(p, 0.08, 0.2);
+  story.headline[1] = band(p, 0.24, 0.37);
+  story.headline[2] = band(p, 0.41, 0.54);
+  story.headline[3] = band(p, 0.6, 0.71);
   story.headline[4] = 0;
-  story.scrollHint = 1 - smooth(seg(p, 0.004, 0.03));
 
-  // traceability sub-sequence
+  // traceability dashboard sub-sequence (over the wide trace window)
   const tl = story.traceP;
-  story.qrP = seg(tl, 0.0, 0.22);
-  story.lineP = seg(tl, 0.22, 0.38);
-  story.timelineP = seg(tl, 0.34, 0.78);
-  story.metricsP = seg(tl, 0.74, 1.0);
-  story.scrim = clamp01(smooth(seg(p, 0.78, 0.85)));
+  story.qrP = seg(tl, 0.0, 0.14);
+  story.lineP = seg(tl, 0.12, 0.24);
+  story.timelineP = seg(tl, 0.2, 0.44);
+  story.chartsP = seg(tl, 0.4, 0.68);
+  story.consumptionP = seg(tl, 0.62, 0.86);
+  story.metricsP = seg(tl, 0.82, 1.0);
+  story.scrim = clamp01(smooth(seg(p, 0.69, 0.75)));
 
-  // lighting — brighter steady scene; only the final dims/recedes
-  story.roomFade = 1 - 0.88 * seg(p, 0.92, 1.0);
-  story.ambient = lerp(2.0, 1.6, seg(p, 0.85, 1.0)) * lerp(1, 0.45, seg(p, 0.92, 1.0));
+  story.roomFade = 1 - 0.88 * seg(p, 0.94, 1.0);
+  story.ambient = lerp(2.0, 1.6, seg(p, 0.85, 1.0)) * lerp(1, 0.5, seg(p, 0.94, 1.0));
 }
