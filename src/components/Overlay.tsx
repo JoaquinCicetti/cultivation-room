@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { HEADLINES, NOTIFICATIONS, regRef, TIMELINE, TRACE_METRICS } from "../scroll/story";
 import { LogoReveal } from "./LogoReveal";
+import { ContactButton } from "./contact/ContactButton";
 import { Qr } from "./Qr";
 import { MetricChart } from "./MetricChart";
 
@@ -95,9 +96,12 @@ export function Overlay() {
         <LogoReveal className="final-logo" size={72} />
         <h2 className="final-word">Growcast</h2>
         <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
-        <Link className="cta" to="/catalog">
-          Explorar Growcast →
-        </Link>
+        <div className="final-cta-row">
+          <Link className="cta" to="/catalog">
+            Explorar Growcast →
+          </Link>
+          <ContactButton label="Contacto" className="cta-ghost" />
+        </div>
       </div>
     </div>
   );
