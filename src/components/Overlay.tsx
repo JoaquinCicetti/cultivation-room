@@ -10,7 +10,6 @@ import { MetricChart } from "./MetricChart";
 export function Overlay() {
   return (
     <div className="overlay">
-      <div className="left-veil" aria-hidden />
       <div className="story-scrim" ref={regRef("scrim")} style={{ opacity: 0 }} />
 
       {/* LEFT — storytelling */}

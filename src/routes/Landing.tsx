@@ -26,19 +26,6 @@ export default function Landing() {
 
   return (
     <>
-      <div className="cool-bg" aria-hidden>
-        <span className="orb orb-1" />
-        <span className="orb orb-2" />
-        <span className="orb orb-3" />
-        <span className="orb orb-4" />
-        <span className="orb orb-5" />
-        <span className="orb orb-6" />
-        <div className="cool-wall" />
-        <div className="cool-grid" />
-        <div className="cool-dots" />
-        <div className="cool-vignette" />
-      </div>
-
       <div style={{ height: `${TOTAL_VH}vh` }} aria-hidden />
 
       {/* right-column canvas (the floating room) */}
