@@ -41,8 +41,10 @@ function Backdrop() {
     c.width = c.height = 256;
     const ctx = c.getContext("2d")!;
     const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    // tighter, more defined falloff (crisp glow, not smoke)
     g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.35, "rgba(255,255,255,0.4)");
+    g.addColorStop(0.18, "rgba(255,255,255,0.6)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.12)");
     g.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 256, 256);
@@ -64,13 +66,13 @@ function Backdrop() {
     const power = smooth(clamp01((state.clock.elapsedTime - start.current - 0.2) / 1.5));
     const mat = mesh.material as THREE.MeshBasicMaterial;
     mat.color.copy(GLOW_PURPLE).lerp(GLOW_RED, story.alert);
-    mat.opacity = (0.4 + story.alert * 0.55) * story.roomFade * power;
+    mat.opacity = (0.42 + story.alert * 0.5) * story.roomFade * power;
     mesh.quaternion.copy(camera.quaternion);
   });
 
   return (
-    <mesh ref={glowRef} position={[0, 2.2, -1]} renderOrder={-5}>
-      <planeGeometry args={[34, 26]} />
+    <mesh ref={glowRef} position={[0.6, 2.4, -1]} renderOrder={-5}>
+      <planeGeometry args={[17, 13]} />
       <meshBasicMaterial map={glowTex} transparent opacity={0} depthWrite={false} depthTest={false} />
     </mesh>
   );

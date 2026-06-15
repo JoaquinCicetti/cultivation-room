@@ -291,10 +291,12 @@ canvas {
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 0.8rem;
-  text-align: center;
+  gap: 0.7rem;
+  text-align: left;
+  padding: 0 clamp(1.5rem, 5vw, 4.5rem);
+  max-width: 46%;
   will-change: opacity;
 }
 .intro-logo {
@@ -302,7 +304,7 @@ canvas {
 }
 .intro-brand {
   margin: 0.3rem 0 0;
-  font-size: clamp(3rem, 9vw, 6rem);
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
   font-weight: 730;
   letter-spacing: -0.04em;
 }
