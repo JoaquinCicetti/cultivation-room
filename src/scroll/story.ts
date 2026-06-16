@@ -59,17 +59,96 @@ export interface MetricDef {
 }
 type Vec3orT = [number, number, number];
 
-// Three is enough — the rest stay in software. pH/EC/PPFD/VPD are intentionally
-// not shown on the scene (reserved for the in-app dashboard).
+// Two telemetry cards stay on the scene (Temperatura, Humedad). CO₂ is replaced
+// by an output device card (Luces); pH/EC/PPFD/VPD live in the in-app dashboard.
 export const METRICS: MetricDef[] = [
   { id: "temp", name: "Temperatura", sensor: "Sensor THC · Growcast +", unit: "°C", decimals: 1, base: 24.3, disp: [22.5, 29], warn: 25.9, alarm: 27.2, anchor: [1.45, 1.55, -2.2] },
-  { id: "hum", name: "Humedad", sensor: "Sensor THC · Growcast +", unit: "%HR", decimals: 0, base: 64, disp: [54, 74], anchor: [-2.35, 1.4, 0.1] },
-  { id: "co2", name: "CO₂", sensor: "Sensor NDIR · Growcast +", unit: "ppm", decimals: 0, base: 820, disp: [680, 980], anchor: [-0.6, 2.0, -1.7] },
+  { id: "hum", name: "Humedad", sensor: "Sensor THC · Growcast +", unit: "%HR", decimals: 0, base: 62, disp: [48, 74], anchor: [-2.35, 1.4, 0.1] },
 ];
 
 // screen-space sensor positions (px), written each frame by StoryDirector so
 // the DOM card layer can draw leader lines without touching the 3D camera.
 export const sensorScreen = METRICS.map(() => ({ x: 0, y: 0, vis: 0 }));
+
+// ---- device control: output cards (Section 04 — Control de equipos) --------
+// Output cards share the exact visual language of the telemetry cards but drive
+// real equipment: grow lights + the wall AC. The CARD is the source of truth —
+// the 3D room mirrors `devices` every frame. Each card also runs a small leader
+// line to the equipment it controls (projected into `deviceScreen`).
+export type DeviceId = "lights" | "ac";
+export interface DeviceDef {
+  id: DeviceId;
+  name: string;
+  meta: string; // metadata row (output type · module · zone)
+  automation: string; // the rule operating the control (shown in the badge when AUTO)
+  duty: number; // typical duty cycle 0..1 (seeds the runtime history)
+  anchor: [number, number, number]; // equipment position in room-local space
+}
+export const DEVICES: DeviceDef[] = [
+  { id: "lights", name: "Luces", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Fotoperiodo", duty: 0.9, anchor: [0.4, 1.95, 0.9] },
+  { id: "ac", name: "Aire", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Clima S2", duty: 0.55, anchor: [2.15, 2.0, -2.53] },
+];
+export const deviceScreen = DEVICES.map(() => ({ x: 0, y: 0, vis: 0 }));
+
+// resolved device state, recomputed every frame from the timeline OR a user
+// override. `manual` flags an active override (automation paused for it).
+export interface DeviceView {
+  on: boolean;
+  level: number; // 0..1 output
+  manual: boolean;
+}
+export const devices: Record<DeviceId, DeviceView> & { releaseSeq: number } = {
+  lights: { on: true, level: 1, manual: false },
+  ac: { on: false, level: 0, manual: false },
+  releaseSeq: 0, // bumped whenever an override is auto-released (return-to-history)
+};
+
+interface DevOverride {
+  active: boolean;
+  on: boolean;
+  level: number;
+  setP: number; // scroll position when the user took control
+}
+const DEVICE_IDS: DeviceId[] = ["lights", "ac"];
+let alarmLatch = 0; // notification sequence state within the incident band
+const overrides: Record<DeviceId, DevOverride> = {
+  lights: { active: false, on: true, level: 1, setP: 0 },
+  ac: { active: false, on: false, level: 0, setP: 0 },
+};
+// scroll distance after taking control before the override is released and the
+// recorded timeline resumes (well above any damping settle jitter).
+const RELEASE_DELTA = 0.02;
+
+// historical (scroll-driven) device states — the "recorded timeline"
+function lightsHist(_p: number) {
+  return { on: true, level: 1 }; // grow lights run through the whole cultivation arc
+}
+function acHist(p: number) {
+  return acAuto(p); // cool by default; drops out during the incident
+}
+function deviceHist(id: DeviceId, p: number) {
+  return id === "lights" ? lightsHist(p) : acHist(p);
+}
+
+// ---- user actions (called from the card click handlers) -------------------
+export function deviceSetPower(id: DeviceId, on: boolean) {
+  const o = overrides[id];
+  o.active = true;
+  o.on = on;
+  o.level = on ? 1 : 0;
+  o.setP = scrollState.current;
+}
+export function deviceSetAuto(id: DeviceId) {
+  overrides[id].active = false; // release immediately back to the timeline
+}
+export function deviceSetManual(id: DeviceId) {
+  const o = overrides[id];
+  const v = devices[id];
+  o.active = true;
+  o.on = v.on;
+  o.level = v.on ? v.level || 1 : 0;
+  o.setP = scrollState.current;
+}
 
 export type MetricStatus = 0 | 1 | 2; // normal | warning | alarm
 export function metricStatus(m: MetricDef, v: number): MetricStatus {
@@ -77,9 +156,12 @@ export function metricStatus(m: MetricDef, v: number): MetricStatus {
   if (m.warn !== undefined && v >= m.warn) return 1;
   return 0;
 }
-// resting target a card's value counts toward (temperature follows the sim).
+// resting target a card's value counts toward — temperature and humidity both
+// follow the live climate sim (see updateStory); the rest rest at their base.
 export function metricTarget(m: MetricDef): number {
-  return m.id === "temp" ? story.temp : m.base;
+  if (m.id === "temp") return story.temp;
+  if (m.id === "hum") return story.hum;
+  return m.base;
 }
 
 // ---- bottom-right notification toasts -------------------------------------
@@ -183,10 +265,10 @@ export const HEADLINES = [
     lead: "Ante una alerta, la climatización se activa sola y devuelve el ambiente a su rango óptimo.",
   },
   {
-    k: "04 · Trazabilidad",
-    h: "Cada planta, trazada",
-    s: "Cada ejemplar guarda su historia completa, de la semilla a la cosecha.",
-    lead: "Lote, genética, programa de riego y días de ciclo quedan asociados a cada planta.",
+    k: "04 · Control de equipos",
+    h: "Del dato a la acción física",
+    s: "Growcast no solo mide: enciende, regula y apaga los equipos de la sala.",
+    lead: "Luces y climatización responden en automático, y siempre podés tomar el control manual desde la tarjeta.",
   },
 ];
 
@@ -196,13 +278,6 @@ export const HERO_POS: [number, number, number] = [0.6, 1.18, 0.95];
 // Phase windows. Intro at the start; the traceability dashboard is wide so it
 // stays on screen longer.
 // ---------------------------------------------------------------------------
-function tempAt(p: number) {
-  if (p < 0.24) return 24.8;
-  if (p < 0.36) return lerp(24.8, 28.4, smooth(seg(p, 0.24, 0.36)));
-  if (p < 0.41) return 28.4;
-  if (p < 0.53) return lerp(28.4, 24.9, smooth(seg(p, 0.41, 0.53)));
-  return 24.9;
-}
 function growthAt(p: number) {
   if (p < 0.16) return 0.22;
   if (p < 0.24) return lerp(0.22, 0.42, smooth(seg(p, 0.16, 0.24)));
@@ -210,12 +285,28 @@ function growthAt(p: number) {
   if (p < 0.6) return lerp(0.66, 1.0, smooth(seg(p, 0.53, 0.6)));
   return 1.0;
 }
-function fanAt(p: number) {
-  if (p < 0.41) return 0;
-  if (p < 0.47) return smooth(seg(p, 0.41, 0.47));
-  if (p < 0.6) return 1;
-  return lerp(1, 0.22, smooth(seg(p, 0.6, 0.72)));
+// Auto AC schedule: the climate system keeps the room cool by default, then
+// DROPS OUT during the incident (≈0.24–0.42) so the room heats up and the alarm
+// trips, then recovers. (Manual override can run it any time.)
+function acAuto(p: number) {
+  const dropout = smooth(seg(p, 0.22, 0.28)) * (1 - smooth(seg(p, 0.42, 0.48)));
+  const level = clamp01(1 - dropout);
+  return { on: level > 0.15, level };
 }
+
+// ---- climate physics: the AC cools + dehumidifies the room ----------------
+// The room is inherently warm (grow lights): with the AC OFF temperature climbs
+// toward AMBIENT_HOT, with it ON it is pulled toward the cool setpoint. So temp
+// rises the whole time the AC is off, and the alarm trips when it actually
+// crosses the threshold. Integrated off a fast rate so the move is quick.
+const AMBIENT_HOT = 30.5; // °C the room drifts to with no cooling
+const TEMP_SETPOINT = 22.5; // °C the AC drives temperature toward when running
+const AMBIENT_HUM_HOT = 71; // %HR with no dehumidifying
+const HUM_SETPOINT = 52; // %HR the AC drives humidity toward when running
+const TEMP_RATE = 2.6; // per sim-second — fast thermal response
+const HUM_RATE = 1.5; // per sim-second
+// sim time runs continuously off the wall clock (TIME_SCALE = sim-sec per real-sec)
+const TIME_SCALE = 0.36;
 
 const cGreen = new THREE.Color(COLORS.accent);
 const cAmber = new THREE.Color(COLORS.amber);
@@ -231,6 +322,8 @@ function tempColor(temp: number): string {
 export const story = {
   p: 0,
   temp: 24.8,
+  hum: 62,
+  simClock: 0, // sim time, advanced slowly off the wall clock
   tempColorHex: COLORS.accent,
   alert: 0,
   growth: 0.42,
@@ -262,14 +355,50 @@ export const story = {
   headline: [0, 0, 0, 0, 0] as number[],
 };
 
-export function updateStory(p: number) {
+export function updateStory(p: number, dt = 0) {
   story.p = p;
-  story.temp = tempAt(p);
+  // sim time advances slowly and continuously off the wall clock
+  const simDt = Math.min(dt, 0.05) * TIME_SCALE;
+  story.simClock += simDt;
+  story.growth = growthAt(p);
+
+  // ---- resolve device state: user override OR the recorded timeline --------
+  // An override is released once the user scrolls past where they took control,
+  // resuming the historical state (and pulsing the "return to timeline" note).
+  // Resolved first so the AC's state can drive the climate physics below.
+  for (const id of DEVICE_IDS) {
+    const o = overrides[id];
+    if (o.active && Math.abs(p - o.setP) > RELEASE_DELTA) {
+      o.active = false;
+      devices.releaseSeq++;
+    }
+    const v = devices[id];
+    if (o.active) {
+      v.on = o.on;
+      v.level = o.level;
+      v.manual = true;
+    } else {
+      const h = deviceHist(id, p);
+      v.on = h.on;
+      v.level = h.level;
+      v.manual = false;
+    }
+  }
+  // AC running level (auto or manual); drives the airflow, leaves + climate
+  const ac = devices.ac.on ? devices.ac.level : 0;
+  story.fan = ac;
+  story.agitation = ac;
+
+  // ---- climate physics: AC influence on temperature & humidity -------------
+  // With the AC off the room climbs toward AMBIENT_HOT; with it on it is pulled
+  // to the cool setpoint. So temperature rises the whole time the AC is off, and
+  // the alarm trips when temp actually crosses the threshold.
+  const targetTemp = lerp(AMBIENT_HOT, TEMP_SETPOINT, ac) + Math.sin(story.simClock * 0.5) * 0.1;
+  const targetHum = lerp(AMBIENT_HUM_HOT, HUM_SETPOINT, ac * 0.9) + Math.sin(story.simClock * 0.4 + 1.7) * 0.5;
+  story.temp += (targetTemp - story.temp) * (1 - Math.exp(-simDt * TEMP_RATE));
+  story.hum += (targetHum - story.hum) * (1 - Math.exp(-simDt * HUM_RATE));
   story.tempColorHex = tempColor(story.temp);
   story.alert = smooth(seg(story.temp, 26.2, 27.4));
-  story.growth = growthAt(p);
-  story.fan = fanAt(p);
-  story.agitation = story.fan;
   // Traceability: a transition (room rises out / tablet detaches + enlarges)
   // followed by an internal report scroll inside the now-large tablet.
   story.traceP = seg(p, 0.6, 0.92);
@@ -281,9 +410,17 @@ export function updateStory(p: number) {
   story.introFade = 1 - smooth(seg(p, 0.05, 0.09));
   story.scrollHint = 1 - smooth(seg(p, 0.004, 0.03));
 
-  let n = 0;
-  for (const t of NOTIFICATIONS) if (p >= t.at) n++;
-  story.notif = n;
+  // Notifications follow the real climate, not the scroll position: alta (temp
+  // crossed the threshold) → enfriamiento (AC came back on) → normalizada (temp
+  // recovered). Latched within the incident band so they read as a sequence.
+  if (p < 0.2 || p > 0.62) {
+    alarmLatch = 0;
+  } else {
+    if (story.alert > 0.45) alarmLatch = Math.max(alarmLatch, 1);
+    if (alarmLatch >= 1 && devices.ac.on && story.fan > 0.4) alarmLatch = Math.max(alarmLatch, 2);
+    if (alarmLatch >= 2 && story.temp < 25) alarmLatch = Math.max(alarmLatch, 3);
+  }
+  story.notif = alarmLatch;
 
   const toAC = smooth(seg(p, 0.37, 0.47));
   const fromAC = smooth(seg(p, 0.56, 0.66));
@@ -296,16 +433,16 @@ export function updateStory(p: number) {
 
   story.headline[0] = band(p, 0.08, 0.2);
   story.headline[1] = band(p, 0.24, 0.37);
-  story.headline[2] = band(p, 0.41, 0.56);
-  story.headline[3] = 0;
+  story.headline[2] = band(p, 0.39, 0.49);
+  story.headline[3] = band(p, 0.49, 0.6); // 04 · Control de equipos
   story.headline[4] = 0;
 
   // the room visibly rises out of frame — no covering scrim needed
   story.scrim = 0;
 
-  // live metric cards ring the room through the monitoring arc (scenes 1-4),
-  // then clear out before the traceability dashboard takes over.
-  story.cards = clamp01(smooth(seg(p, 0.04, 0.1))) * (1 - clamp01(smooth(seg(p, 0.54, 0.6))));
+  // live metric + device cards ring the room through the monitoring & control
+  // arc (scenes 1-4), then clear out before the traceability dashboard appears.
+  story.cards = clamp01(smooth(seg(p, 0.04, 0.1))) * (1 - clamp01(smooth(seg(p, 0.57, 0.61))));
 
   story.roomFade = 1 - 0.88 * seg(p, 0.94, 1.0);
   story.ambient = lerp(2.0, 1.6, seg(p, 0.85, 1.0)) * lerp(1, 0.5, seg(p, 0.94, 1.0));

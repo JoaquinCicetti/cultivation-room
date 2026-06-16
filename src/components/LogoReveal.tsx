@@ -28,8 +28,8 @@ const HILITE = "#eef6c4"; // transient light only (frontier + pulse), additive
 
 // Pinwheel hub (≈ viewBox center) and the per-leaf reveal radius.
 const CX = 43.28;
-const CY = 41.61;
-const R_MAX = 52; // covers each leaf base→tip (+ feather)
+const CY = 45.61;
+const R_MAX = 64; // covers each leaf base→tip (+ feather)
 
 // Wedge sector boundaries (deg, SVG y-down) that partition the plane so the
 // union of the three leaves covers the whole mark with no gaps.
@@ -49,7 +49,13 @@ function wedgePath([a0, a1]: readonly [number, number]): string {
   return `M${CX} ${CY} L${p(a0)} L${p(mid)} L${p(a1)} Z`;
 }
 
-export function LogoReveal({ size = 64, className = "" }: { size?: number; className?: string }) {
+export function LogoReveal({
+  size = 64,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
   const groupRef = useRef<SVGGElement>(null);
   const seedRef = useRef<SVGCircleElement>(null);
   const hiliteRef = useRef<SVGPathElement>(null);
@@ -64,11 +70,15 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
   const frLR = useRef<SVGCircleElement>(null);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
     // Reduced motion: reveal the mark fully, no growth/idle.
     if (reduce) {
-      [revUp, revLL, revLR].forEach((r) => r.current?.setAttribute("r", String(R_MAX)));
+      [revUp, revLL, revLR].forEach((r) =>
+        r.current?.setAttribute("r", String(R_MAX)),
+      );
       gsap.set(seedRef.current, { opacity: 0.45 });
       gsap.set(hiliteRef.current, { opacity: 0 });
       return;
@@ -84,14 +94,34 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
     tl.fromTo(
       seedRef.current,
       { opacity: 0, scale: 0.55, svgOrigin: `${CX} ${CY}` },
-      { opacity: 1, scale: 1, duration: 0.85, ease: "sine.out", svgOrigin: `${CX} ${CY}` },
+      {
+        opacity: 1,
+        scale: 1,
+        duration: 0.85,
+        ease: "sine.out",
+        svgOrigin: `${CX} ${CY}`,
+      },
       0,
     );
-    tl.to(seedRef.current, { opacity: 0.8, duration: 1.1, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0.85);
+    tl.to(
+      seedRef.current,
+      {
+        opacity: 0.8,
+        duration: 1.1,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: 1,
+      },
+      0.85,
+    );
 
     // 2 — leaves grow from center outward, staggered (up → lower-left → lower-right)
     const grow = (targets: Array<SVGCircleElement | null>, at: number) =>
-      tl.to(targets, { attr: { r: R_MAX }, duration: 1.5, ease: "power3.out" }, at);
+      tl.to(
+        targets,
+        { attr: { r: R_MAX }, duration: 1.5, ease: "power3.out" },
+        at,
+      );
     grow([revUp.current, frUp.current], 0.55);
     grow([revLL.current, frLL.current], 1.05);
     grow([revLR.current, frLR.current], 1.55);
@@ -109,10 +139,23 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
       3.05,
     );
     // a single soft pulse of light travels through the completed form
-    tl.fromTo(pulseRef.current, { attr: { r: 0 }, opacity: 1 }, { attr: { r: 60 }, duration: 1.0, ease: "power2.out" }, 3.05);
+    tl.fromTo(
+      pulseRef.current,
+      { attr: { r: 0 }, opacity: 1 },
+      { attr: { r: 60 }, duration: 1.0, ease: "power2.out" },
+      3.05,
+    );
     // retire the frontier highlight once the form is alive
-    tl.to(hiliteRef.current, { opacity: 0, duration: 0.7, ease: "sine.inOut" }, 3.7);
-    tl.to(seedRef.current, { opacity: 0.5, duration: 0.8, ease: "sine.inOut" }, 3.7);
+    tl.to(
+      hiliteRef.current,
+      { opacity: 0, duration: 0.7, ease: "sine.inOut" },
+      3.7,
+    );
+    tl.to(
+      seedRef.current,
+      { opacity: 0.5, duration: 0.8, ease: "sine.inOut" },
+      3.7,
+    );
 
     // 4 — idle forever: microscopic breathing + glow flicker (no spin/float)
     tl.eventCallback("onComplete", () => {
@@ -153,8 +196,17 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
   }, []);
 
   return (
-    <span className={`logo-reveal ${className}`} style={{ width: size, height: size }}>
-      <svg viewBox="0 0 86.56 83.22" width={size} height={size} aria-label="Growcast" role="img">
+    <span
+      className={`logo-reveal ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <svg
+        viewBox="0 0 86.56 83.22"
+        width={size}
+        height={size}
+        aria-label="Growcast"
+        role="img"
+      >
         <defs>
           {/* soft (not smoky) glow for the seed */}
           <filter id="lr-soft" x="-80%" y="-80%" width="260%" height="260%">
@@ -191,20 +243,52 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
           </clipPath>
 
           {/* reveal mask: three feathered circles grow within their leaf wedges */}
-          <mask id="lr-reveal" maskUnits="userSpaceOnUse" x="-30" y="-30" width="160" height="160">
+          <mask
+            id="lr-reveal"
+            maskUnits="userSpaceOnUse"
+            x="-30"
+            y="-30"
+            width="160"
+            height="160"
+          >
             <g clipPath="url(#lr-wedge-up)">
-              <circle ref={revUp} cx={CX} cy={CY} r={0} fill="url(#lr-feather)" />
+              <circle
+                ref={revUp}
+                cx={CX}
+                cy={CY}
+                r={0}
+                fill="url(#lr-feather)"
+              />
             </g>
             <g clipPath="url(#lr-wedge-ll)">
-              <circle ref={revLL} cx={CX} cy={CY} r={0} fill="url(#lr-feather)" />
+              <circle
+                ref={revLL}
+                cx={CX}
+                cy={CY}
+                r={0}
+                fill="url(#lr-feather)"
+              />
             </g>
             <g clipPath="url(#lr-wedge-lr)">
-              <circle ref={revLR} cx={CX} cy={CY} r={0} fill="url(#lr-feather)" />
+              <circle
+                ref={revLR}
+                cx={CX}
+                cy={CY}
+                r={0}
+                fill="url(#lr-feather)"
+              />
             </g>
           </mask>
 
           {/* frontier mask: a bright ring rides each growth edge, plus the breath pulse */}
-          <mask id="lr-frontier" maskUnits="userSpaceOnUse" x="-30" y="-30" width="160" height="160">
+          <mask
+            id="lr-frontier"
+            maskUnits="userSpaceOnUse"
+            x="-30"
+            y="-30"
+            width="160"
+            height="160"
+          >
             <g clipPath="url(#lr-wedge-up)">
               <circle ref={frUp} cx={CX} cy={CY} r={0} fill="url(#lr-ring)" />
             </g>
@@ -220,7 +304,15 @@ export function LogoReveal({ size = 64, className = "" }: { size?: number; class
 
         <g ref={groupRef}>
           {/* seed glow at the origin */}
-          <circle ref={seedRef} cx={CX} cy={CY} r={20} fill="url(#lr-seed)" filter="url(#lr-soft)" opacity={0} />
+          {/* <circle
+            ref={seedRef}
+            cx={CX}
+            cy={CY}
+            r={20}
+            fill="url(#lr-seed)"
+            filter="url(#lr-soft)"
+            opacity={0}
+          /> */}
           {/* the exact mark, revealed by the growth mask */}
           <path d={LOGO_D} fill={MARK} mask="url(#lr-reveal)" />
           {/* lighter copy, masked to the moving frontier — life flowing through */}

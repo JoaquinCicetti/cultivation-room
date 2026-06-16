@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 
 import * as mat from "./materials";
 import { AC_POS, CONTROLLER_POS, ROOM_D, ROOM_W, TANK_POS, VAPORIZER_POS, WALL_THICK, type Vec3 } from "./sceneData";
-import { METRICS, story } from "../scroll/story";
+import { devices, METRICS, story } from "../scroll/story";
 
 // --- Vaporizer / humidifier with a rising mist plume ------------------------
 export function Vaporizer() {
@@ -59,7 +59,9 @@ export function AirConditioner() {
   );
 
   useFrame((state, delta) => {
-    const ac = story.fan; // climate-response 0..1 (ramps on in CONTROL)
+    // the Aire acondicionado card is the source of truth (auto OR manual)
+    const dac = devices.ac;
+    const ac = dac.on ? dac.level : 0;
     const t = state.clock.elapsedTime;
     if (louvers.current) {
       const tilt = -0.45 - Math.sin(t * 2.4) * 0.28 * ac;
