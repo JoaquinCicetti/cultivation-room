@@ -1,6 +1,17 @@
 import { useEffect, useRef } from "react";
 
-import { DEVICES, devices, METRICS, metricStatus, metricTarget, sensorScreen, story, type MetricDef } from "../scroll/story";
+import {
+  clamp01,
+  DEVICES,
+  devices,
+  METRICS,
+  metricStatus,
+  metricTarget,
+  sensorScreen,
+  smooth,
+  story,
+  type MetricDef,
+} from "../scroll/story";
 import { DeviceRuntimeCard } from "./DeviceRuntimeCard";
 
 // Live monitoring layer. Two telemetry cards (Temperatura, Humedad) keep the
@@ -18,9 +29,26 @@ const ST = 0.19; // seconds per committed sample (gentle, slow-moving history)
 const CW = 100;
 const CH = 40;
 
+// Cards enter one-by-one sweeping anti-clockwise around the room:
+//   Humedad (top-right) → Aire (top) → Temperatura (left) → Luces (bottom-left)
+const REVEAL_ORDER = { hum: 0, ac: 1, temp: 2, lights: 3 } as const;
+const REVEAL_STAGGER = 0.13;
+const REVEAL_DUR = 0.36;
+const cardReveal = (vis: number, order: number) =>
+  smooth(clamp01((vis - order * REVEAL_STAGGER) / REVEAL_DUR));
+function applyReveal(el: HTMLElement | null, r: number) {
+  if (!el) return;
+  el.style.opacity = r.toFixed(3);
+  el.style.transform = `translateY(${((1 - r) * 18).toFixed(1)}px) scale(${(0.95 + 0.05 * r).toFixed(3)})`;
+}
+
 // small calm telemetry jitter in roughly [-1, 1]
 function wave(x: number, seed: number) {
-  return Math.sin(x * 1.7 + seed) * 0.5 + Math.sin(x * 0.71 + seed * 2.3) * 0.3 + Math.sin(x * 3.13 + seed * 0.7) * 0.2;
+  return (
+    Math.sin(x * 1.7 + seed) * 0.5 +
+    Math.sin(x * 0.71 + seed * 2.3) * 0.3 +
+    Math.sin(x * 3.13 + seed * 0.7) * 0.2
+  );
 }
 
 // point on a card's border in the direction of its sensor (for leader lines)
@@ -30,7 +58,12 @@ function borderPoint(r: DOMRect, sx: number, sy: number) {
   const dx = sx - cx;
   const dy = sy - cy;
   if (dx === 0 && dy === 0) return { x: cx, y: cy };
-  const scale = 1 / Math.max(Math.abs(dx) / (r.width / 2 + 2), Math.abs(dy) / (r.height / 2 + 2));
+  const scale =
+    1 /
+    Math.max(
+      Math.abs(dx) / (r.width / 2 + 2),
+      Math.abs(dy) / (r.height / 2 + 2),
+    );
   return { x: cx + dx * scale, y: cy + dy * scale };
 }
 
@@ -74,6 +107,9 @@ export function MetricCards() {
     const stepW = CW / W;
     let seenReleaseSeq = devices.releaseSeq;
     let returnAt = -10;
+    let acEl: HTMLElement | null = null;
+    let lightsEl: HTMLElement | null = null;
+    const lineReveal = [1, 1]; // per-metric card reveal, gates its leader line
 
     const yOf = (v: number, m: MetricDef, range: number) => {
       const ty = 1 - (v - m.disp[0]) / range;
@@ -95,19 +131,31 @@ export function MetricCards() {
           if (root.style.display !== "none") root.style.display = "none";
         } else {
           if (root.style.display === "none") root.style.display = "";
-          root.style.opacity = vis.toFixed(3);
+          root.style.opacity = "1"; // per-card reveal owns the fade now
         }
       }
-      // leader lines fade out with the cards (no stale lines when cards are gone)
       if (lines) {
         if (hidden) {
           if (lines.style.display !== "none") lines.style.display = "none";
         } else {
           if (lines.style.display === "none") lines.style.display = "";
-          lines.style.opacity = vis.toFixed(3);
+          lines.style.opacity = "1";
         }
       }
       if (hidden) return;
+
+      // anti-clockwise staggered entrance (each card fades + rises into place)
+      if (!acEl) acEl = document.querySelector<HTMLElement>(".mc-ac");
+      if (!lightsEl)
+        lightsEl = document.querySelector<HTMLElement>(".mc-lights");
+      const rTemp = cardReveal(vis, REVEAL_ORDER.temp);
+      const rHum = cardReveal(vis, REVEAL_ORDER.hum);
+      applyReveal(cardRefs.current[0], rTemp); // METRICS[0] = Temperatura
+      applyReveal(cardRefs.current[1], rHum); //  METRICS[1] = Humedad
+      applyReveal(acEl, cardReveal(vis, REVEAL_ORDER.ac));
+      applyReveal(lightsEl, cardReveal(vis, REVEAL_ORDER.lights));
+      lineReveal[0] = rTemp;
+      lineReveal[1] = rHum;
 
       const kCount = 1 - Math.exp(-dt * 6);
       // sample cadence rides the scroll-driven sim clock: commit whole steps,
@@ -134,7 +182,8 @@ export function MetricCards() {
         const card = cardRefs.current[i];
         if (card) {
           card.style.setProperty("--st", color);
-          if (card.dataset.status !== STATUS[status]) card.dataset.status = STATUS[status];
+          if (card.dataset.status !== STATUS[status])
+            card.dataset.status = STATUS[status];
         }
         const num = numRefs.current[i];
         if (num) num.textContent = fmt(val, m.decimals);
@@ -166,12 +215,19 @@ export function MetricCards() {
           if (v > max) max = v;
           sum += v;
           const x = j * stepW - phase * stepW;
-          line += (j ? "L" : "M") + x.toFixed(2) + " " + yOf(v, m, range).toFixed(2) + " ";
+          line +=
+            (j ? "L" : "M") +
+            x.toFixed(2) +
+            " " +
+            yOf(v, m, range).toFixed(2) +
+            " ";
         }
         // incoming sample at the right edge follows the live value smoothly
         const tipX = W * stepW - phase * stepW;
-        line += "L" + tipX.toFixed(2) + " " + yOf(val, m, range).toFixed(2) + " ";
-        const area = line + "L " + tipX.toFixed(2) + " " + CH + " L 0 " + CH + " Z";
+        line +=
+          "L" + tipX.toFixed(2) + " " + yOf(val, m, range).toFixed(2) + " ";
+        const area =
+          line + "L " + tipX.toFixed(2) + " " + CH + " L 0 " + CH + " Z";
         const lp = chartRefs.current[i];
         if (lp) lp.setAttribute("d", line);
         const ap = areaRefs.current[i];
@@ -182,7 +238,8 @@ export function MetricCards() {
         const median = sorted[W >> 1];
         const stats = [min, sum / W, median, max];
         const cells = statRefs.current[i];
-        for (let s = 0; s < 4; s++) if (cells[s]) cells[s]!.textContent = fmt(stats[s], m.decimals);
+        for (let s = 0; s < 4; s++)
+          if (cells[s]) cells[s]!.textContent = fmt(stats[s], m.decimals);
       }
 
       // "returning to recorded timeline" note (pulses when an override releases)
@@ -210,14 +267,23 @@ export function MetricCards() {
         if (!card || !ln || !dot) continue;
         const r = card.getBoundingClientRect();
         const bp = borderPoint(r, s.x, s.y);
-        ln.setAttribute("d", `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} L ${bp.x.toFixed(1)} ${bp.y.toFixed(1)}`);
+        ln.setAttribute(
+          "d",
+          `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} L ${bp.x.toFixed(1)} ${bp.y.toFixed(1)}`,
+        );
         const status = metricStatus(METRICS[i], cur.current[i]);
-        ln.style.stroke = status === 2 ? "rgba(240,101,74,0.5)" : status === 1 ? "rgba(232,179,74,0.45)" : "rgba(169,211,106,0.3)";
-        ln.style.opacity = String(s.vis);
+        ln.style.stroke =
+          status === 2
+            ? "rgba(240,101,74,0.5)"
+            : status === 1
+              ? "rgba(232,179,74,0.45)"
+              : "rgba(169,211,106,0.3)";
+        const lr = s.vis * lineReveal[i];
+        ln.style.opacity = String(lr);
         dot.setAttribute("cx", s.x.toFixed(1));
         dot.setAttribute("cy", s.y.toFixed(1));
         dot.style.fill = STATUS_COLOR[status];
-        dot.style.opacity = String(s.vis);
+        dot.style.opacity = String(lr);
       }
     };
 
@@ -227,11 +293,27 @@ export function MetricCards() {
 
   return (
     <>
-      <svg className="mlines" ref={linesRef} style={{ display: "none" }} aria-hidden>
+      <svg
+        className="mlines"
+        ref={linesRef}
+        style={{ display: "none" }}
+        aria-hidden
+      >
         {METRICS.map((m, i) => (
           <g key={m.id}>
-            <path ref={(el) => { lineRefs.current[i] = el; }} className="mline" />
-            <circle ref={(el) => { dotRefs.current[i] = el; }} className="msdot" r={3} />
+            <path
+              ref={(el) => {
+                lineRefs.current[i] = el;
+              }}
+              className="mline"
+            />
+            <circle
+              ref={(el) => {
+                dotRefs.current[i] = el;
+              }}
+              className="msdot"
+              r={3}
+            />
           </g>
         ))}
       </svg>
@@ -254,7 +336,12 @@ export function MetricCards() {
         <DeviceRuntimeCard d={DEVICES[1]} posClass="mc-ac" />
         <DeviceRuntimeCard d={DEVICES[0]} posClass="mc-lights" />
 
-        <div className="dev-return" ref={returnRef} style={{ display: "none" }} aria-hidden>
+        <div
+          className="dev-return"
+          ref={returnRef}
+          style={{ display: "none" }}
+          aria-hidden
+        >
           <span className="dev-return-dot" />
           Volviendo a la línea temporal registrada
         </div>

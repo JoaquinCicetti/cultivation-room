@@ -5,7 +5,7 @@
   --lime-ink: #b4d169;
   --amber: #e8b34a;
   --red: #f0654a;
-  --bg: #0a0e09;
+  --bg: #1e1e21;
   --card: rgba(18, 24, 15, 0.66);
   --line: rgba(238, 242, 226, 0.12);
 
@@ -43,15 +43,73 @@ canvas {
   inset: 0;
   z-index: 0;
 }
-.scene-loader {
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: radial-gradient(140% 110% at 55% 42%, #26262b, #1e1e21 72%);
+  z-index: 70;
+  pointer-events: none;
+  will-change: opacity;
+}
+.loader-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.loader-badge {
+  animation: loader-pulse 1.9s ease-in-out infinite;
+}
+.loader-word {
+  font-size: 1.9rem;
+  font-weight: 730;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.loader-bar {
+  position: relative;
+  width: clamp(120px, 18vw, 200px);
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(238, 242, 226, 0.1);
+  overflow: hidden;
+}
+.loader-bar-fill {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--lime-ink);
-  font-size: 0.75rem;
-  letter-spacing: 0.3em;
+  width: 40%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--lime), transparent);
+  animation: loader-sweep 1.25s ease-in-out infinite;
+}
+.loader-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
+  color: var(--muted);
+}
+@keyframes loader-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+@keyframes loader-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
 }
 
 /* brand mark — base = top-left header; the director scales/translates it up to
@@ -69,15 +127,41 @@ canvas {
   transform-origin: left top;
   will-change: transform;
 }
-.brandmark img {
+/* premium logo badge — turns the bare glyph into a designed brand tile */
+.bm-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  background: linear-gradient(152deg, rgba(44, 52, 30, 0.92), rgba(15, 19, 11, 0.94));
+  border: 1px solid rgba(200, 224, 106, 0.24);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 0 26px rgba(200, 224, 106, 0.12);
+}
+.bm-badge img {
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 50px;
+  height: 50px;
+  filter: drop-shadow(0 0 10px rgba(200, 224, 106, 0.38));
+}
+.loader-badge {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+}
+.loader-badge img {
+  width: 50px;
+  height: 50px;
 }
 .bm-word {
-  font-size: 3.4rem;
-  font-weight: 730;
+  font-size: 2.6rem;
+  font-weight: 720;
   letter-spacing: -0.03em;
+  background: linear-gradient(96deg, #f5f8ed 0%, #e6eecd 46%, #c2db6e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .overlay {
@@ -101,7 +185,7 @@ canvas {
 .story-scrim {
   position: fixed;
   inset: 0;
-  background: radial-gradient(140% 110% at 55% 42%, #14170f, #0b0d09 70%);
+  background: radial-gradient(140% 110% at 55% 42%, #26262b, #1e1e21 70%);
   will-change: opacity;
 }
 
@@ -383,20 +467,20 @@ canvas {
 /* four cards on an arc wrapping the room's upper-left: Lights (bottom-left) →
    Temp (mid-left) → Aire (top peak) → Humedad (top-right) */
 .mc-hum {
-  top: 5vh;
-  left: 70vw;
+  top: 3.5vh;
+  left: 72.5vw;
 }
 .mc-ac {
-  top: 11vh;
-  left: 55vw;
+  top: 8vh;
+  left: 53vw;
 }
 .mc-temp {
   top: 30vh;
-  left: 40vw;
+  left: 35.5vw;
 }
 .mc-lights {
-  top: 56vh;
-  left: 38vw;
+  top: 60vh;
+  left: 33.5vw;
 }
 
 /* ---- output / control runtime widget (DeviceRuntimeCard) --------------- */
@@ -745,17 +829,231 @@ canvas {
   color: var(--muted);
 }
 
-/* ---- intro hero tagline (sits below the hero brand mark) --------------- */
-.intro-tag {
+/* ---- intro hero block (sits below the hero brand mark) ----------------- */
+.intro-hero {
   position: fixed;
-  left: clamp(1.5rem, 5vw, 4.6rem);
-  top: 45vh;
+  left: clamp(1.5rem, 5vw, 4.8rem);
+  top: 46vh;
   margin: 0;
-  max-width: 34ch;
-  font-size: clamp(1rem, 1.9vw, 1.4rem);
-  color: var(--muted);
+  /* constrained left column so copy stays editorial, not full-width */
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
   z-index: 20;
   will-change: opacity;
+}
+.intro-eyebrow {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--lime-ink);
+  margin-bottom: 1.5rem;
+}
+/* tagline = the hero statement — crisp & editorial, deliberately not oversized */
+.intro-tag {
+  margin: 0;
+  max-width: 26ch;
+  font-size: clamp(1.4rem, 1.9vw, 2rem);
+  line-height: 1.25;
+  font-weight: 520;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.intro-meta {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.3rem;
+}
+.intro-meta li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid rgba(200, 224, 106, 0.55);
+}
+.intro-meta strong {
+  font-size: 1.12rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.intro-meta span {
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* ---- mobile: vertical band stack (logo · copy · cards · room · hints) ----
+   Every text block lives in ONE top band at the same Y; the sensor cards are
+   small chips in the middle band; the 3D room is pushed to the lower band by the
+   camera view-offset (see StoryDirector). --------------------------------- */
+@media (max-width: 768px) {
+  /* hero copy — the big brand logo owns the top, so the hero copy is CENTERED
+     and anchored just above the room (different alignment from the step texts) */
+  .intro-hero {
+    top: auto;
+    bottom: 44vh;
+    left: 1.35rem;
+    right: 1.35rem;
+    max-width: none;
+    align-items: center;
+    text-align: center;
+  }
+  .intro-eyebrow {
+    margin-bottom: 0.7rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+  }
+  .intro-tag {
+    font-size: clamp(1.5rem, 6.2vw, 1.8rem);
+    line-height: 1.2;
+    max-width: 22ch;
+  }
+  .intro-meta {
+    margin-top: 1.2rem;
+    gap: 0.6rem 1.3rem;
+    justify-content: center;
+  }
+  .intro-meta strong {
+    font-size: 0.95rem;
+  }
+
+  /* section "history" headlines → SAME top band, single column (not centred) */
+  .text-col {
+    width: 100%;
+    align-items: start;
+    padding: 11vh 1.35rem 0;
+  }
+  .headline {
+    max-width: none;
+  }
+  .headline .kicker {
+    margin-bottom: 0.6rem;
+    font-size: 0.66rem;
+  }
+  .headline h1 {
+    font-size: clamp(1.5rem, 6.2vw, 1.8rem);
+    line-height: 1.18;
+  }
+  .headline .sub {
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+  }
+  .headline .lead {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+
+  /* traceability title → top band, single column, full width (same Y as the
+     rest). Higher specificity (.trace2 .trace2-left) so it beats the later base
+     rule that otherwise keeps it in a centred left column. */
+  .trace2 .trace2-left {
+    top: 11vh;
+    left: 1.35rem;
+    right: 1.35rem;
+    width: auto;
+  }
+  .trace2 .trace2-left h2 {
+    font-size: clamp(1.5rem, 6vw, 1.9rem);
+  }
+
+  /* ---- sensor / equipment cards: small chips in the MIDDLE band ---- */
+  .mlines {
+    display: none !important; /* leader lines off on mobile */
+  }
+  .mcard {
+    width: 42vw;
+    max-width: 200px;
+    height: auto;
+    min-height: 0;
+    padding: 8px 11px;
+    border-radius: 12px;
+  }
+  /* simplify to: name · value (+ alarm/status) · toggle. Hide the mini-chart,
+     stats, time-period selectors and the on/off duration summary. (Keep the
+     toggle's power icon — only the chart CONTAINERS are hidden, not all svg.) */
+  .mcard .mc-seg,
+  .mcard .mc-stats,
+  .mcard .mc-chart,
+  .rtcard .rt-seg,
+  .rtcard .rt-summary,
+  .rtcard .rt-chart,
+  .rtcard .rt-bar {
+    display: none;
+  }
+  .mc-title,
+  .rt-name {
+    font-size: 0.82rem;
+  }
+  .mc-num {
+    font-size: 1.4rem;
+  }
+  .rt-pct {
+    font-size: 1.25rem;
+  }
+  .rtcard .rt-readout {
+    gap: 4px;
+  }
+  /* outputs show ON/OFF state, not a runtime % (driven by [data-on] from JS),
+     and the value reads at the same size as the analog cards' number */
+  .rtcard .rt-pct {
+    display: none;
+  }
+  .rtcard .rt-pct-row::before {
+    content: "Apagado";
+    font-size: 1.35rem;
+    font-weight: 680;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .rtcard[data-on="true"] .rt-pct-row::before {
+    content: "Encendido";
+    color: var(--lime);
+  }
+  /* shorter output card: compact toggle, tight status row → same height as the
+     analog cards (no tall power tile) */
+  .rtcard .rt-status {
+    align-items: center;
+    gap: 9px;
+    margin: 2px 0 0;
+  }
+  .rtcard .rt-tile {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    flex: none;
+  }
+  .rtcard .rt-tile .rt-power {
+    width: 15px;
+    height: 15px;
+  }
+  /* 2×2 grid between the copy (top) and the room (bottom) — generous row gap
+     so the compact cards never overlap */
+  .mc-hum {
+    top: 36vh;
+    left: 5vw;
+  }
+  .mc-temp {
+    top: 36vh;
+    left: 53vw;
+  }
+  .mc-ac {
+    top: 45vh;
+    left: 5vw;
+  }
+  .mc-lights {
+    top: 45vh;
+    left: 53vw;
+  }
+
+  .scroll-hint {
+    bottom: 2vh;
+  }
 }
 
 /* ---- traceability dashboard (full screen) ----------------------------- */
@@ -968,6 +1266,7 @@ canvas {
 }
 .tab3d .tablet-scroll {
   padding: 24px;
+  padding-bottom: 140px; /* section F + footer clear the clip edge at full scroll */
 }
 .tablet-bar {
   display: flex;
@@ -1007,6 +1306,7 @@ canvas {
   inset: 0;
   height: max-content;
   padding: clamp(14px, 1.5vw, 24px);
+  padding-bottom: clamp(44px, 6vh, 90px); /* last section clears the screen edge */
   will-change: transform;
 }
 
@@ -1247,6 +1547,11 @@ canvas {
   position: fixed;
   inset: 0;
   will-change: opacity;
+  /* full-screen frosted glass: the room stays visible but blurred behind, so
+     the closing CTA reads crisply on top */
+  background: rgba(14, 16, 12, 0.5);
+  backdrop-filter: blur(22px) saturate(1.1);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1);
 }
 /* centered hero: the big animated LogoReveal mark + tagline + CTAs */
 .final-main {

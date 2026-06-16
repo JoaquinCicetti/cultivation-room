@@ -28,7 +28,13 @@ export const regRef = (key: string) => (el: HTMLElement | null) => {
 // ---- opening ---------------------------------------------------------------
 export const INTRO = {
   brand: "Growcast",
-  tagline: "Cultivo observable, automatizado y trazable.",
+  eyebrow: "Plataforma de cultivo",
+  tagline: "Medí, controlá y documentá cada ciclo — en tiempo real y sin puntos ciegos.",
+  meta: [
+    { k: "24/7", v: "Monitoreo continuo" },
+    { k: "Automático", v: "Control de equipos" },
+    { k: "Trazable", v: "De semilla a cosecha" },
+  ],
 };
 
 // ---- holographic sensor readings (anchored on the room) --------------------
@@ -40,7 +46,7 @@ export const MEASURE_CHIPS = [
 ] as const;
 
 // ---- single ID holo on the hero plant (the traceability hook) --------------
-export const IMPROVE_TAGS = [{ id: "id", label: "Planta #2481", anchor: [0.6, 1.62, 0.95] }] as const;
+export const IMPROVE_TAGS = [{ id: "id", label: "Planta #2481", anchor: [1.35, 1.42, 0.6] }] as const;
 
 // ---- live monitoring metric cards (the Growcast telemetry cards) -----------
 // One card per environmental variable, ringed around the room. Temperature is
@@ -85,8 +91,8 @@ export interface DeviceDef {
   anchor: [number, number, number]; // equipment position in room-local space
 }
 export const DEVICES: DeviceDef[] = [
-  { id: "lights", name: "Luces", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Fotoperiodo", duty: 0.9, anchor: [0.4, 1.95, 0.9] },
-  { id: "ac", name: "Aire", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Clima S2", duty: 0.55, anchor: [2.15, 2.0, -2.53] },
+  { id: "lights", name: "Luces", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Fotoperiodo", duty: 0.9, anchor: [-0.35, 1.96, 0.6] },
+  { id: "ac", name: "Aire", meta: "Salida de control · Módulo integrado · Sala 2", automation: "Clima S2", duty: 0.55, anchor: [2.2, 2.0, -2.45] },
 ];
 export const deviceScreen = DEVICES.map(() => ({ x: 0, y: 0, vis: 0 }));
 
@@ -289,7 +295,10 @@ function growthAt(p: number) {
 // DROPS OUT during the incident (≈0.24–0.42) so the room heats up and the alarm
 // trips, then recovers. (Manual override can run it any time.)
 function acAuto(p: number) {
-  const dropout = smooth(seg(p, 0.22, 0.28)) * (1 - smooth(seg(p, 0.42, 0.48)));
+  // AC drops out as the incident begins (temp climbs, alarm trips), then comes
+  // back on right as the CONTROL section starts (~0.39) so the recovery is shown
+  // there — not after it. The climate sim below then cools the room promptly.
+  const dropout = smooth(seg(p, 0.22, 0.28)) * (1 - smooth(seg(p, 0.39, 0.45)));
   const level = clamp01(1 - dropout);
   return { on: level > 0.15, level };
 }
@@ -303,8 +312,8 @@ const AMBIENT_HOT = 30.5; // °C the room drifts to with no cooling
 const TEMP_SETPOINT = 22.5; // °C the AC drives temperature toward when running
 const AMBIENT_HUM_HOT = 71; // %HR with no dehumidifying
 const HUM_SETPOINT = 52; // %HR the AC drives humidity toward when running
-const TEMP_RATE = 2.6; // per sim-second — fast thermal response
-const HUM_RATE = 1.5; // per sim-second
+const TEMP_RATE = 4.0; // per sim-second — temp tracks the AC closely (states linked)
+const HUM_RATE = 2.4; // per sim-second
 // sim time runs continuously off the wall clock (TIME_SCALE = sim-sec per real-sec)
 const TIME_SCALE = 0.36;
 
@@ -401,10 +410,13 @@ export function updateStory(p: number, dt = 0) {
   story.alert = smooth(seg(story.temp, 26.2, 27.4));
   // Traceability: a transition (room rises out / tablet detaches + enlarges)
   // followed by an internal report scroll inside the now-large tablet.
-  story.traceP = seg(p, 0.6, 0.92);
+  story.traceP = seg(p, 0.6, 0.94);
   story.traceIn = smooth(seg(p, 0.62, 0.72));
-  story.traceScroll = seg(p, 0.72, 0.9);
-  story.finalP = seg(p, 0.92, 1.0);
+  // the report scrolls across a long window and reaches its end (incl. section F
+  // + footer) by 0.90, then HOLDS fully visible until 0.94, before the ending
+  // fade (0.94→0.99) takes over. Plenty of room to read to the bottom.
+  story.traceScroll = seg(p, 0.6, 0.9);
+  story.finalP = seg(p, 0.95, 1.0);
 
   // intro -> story
   story.introFade = 1 - smooth(seg(p, 0.05, 0.09));
