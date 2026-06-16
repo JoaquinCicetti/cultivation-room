@@ -1,17 +1,20 @@
 import { useEffect, useRef } from "react";
 
-import { METRICS, metricStatus, metricTarget, sensorScreen, story, type MetricDef } from "../scroll/story";
+import { DEVICES, devices, METRICS, metricStatus, metricTarget, sensorScreen, story, type MetricDef } from "../scroll/story";
+import { DeviceRuntimeCard } from "./DeviceRuntimeCard";
 
-// Premium industrial monitoring cards (Datadog / Grafana / Linear lineage).
-// Rendered once; all motion is driven imperatively from a single rAF loop that
-// reads the shared `story` state — no React re-renders, matching the scene.
+// Live monitoring layer. Two telemetry cards (Temperatura, Humedad) keep the
+// premium-industrial chart treatment; the two output devices (Luces, Aire
+// acondicionado) render as DeviceRuntimeCard runtime-analytics widgets. The
+// telemetry motion is driven imperatively from a single rAF loop reading shared
+// `story` state — no React re-renders, matching the scene.
 
 const STATUS = ["normal", "warning", "alarm"] as const;
 const STATUS_COLOR = ["#a9d36a", "#e8b34a", "#f0654a"]; // soft green · amber · red
 const SEGMENTS = ["1h", "12h", "24h"];
 const SEG_ON = 1; // "12h" selected
 const W = 70; // chart history samples (kept in a rolling buffer)
-const ST = 0.13; // seconds per committed sample
+const ST = 0.19; // seconds per committed sample (gentle, slow-moving history)
 const CW = 100;
 const CH = 40;
 
@@ -35,17 +38,27 @@ function fmt(v: number, d: number) {
   return d === 0 ? Math.round(v).toString() : v.toFixed(d);
 }
 
+// 0 -> 1 -> 0 pulse for the "returning to timeline" note (~2.3s total)
+function returnPulse(s: number) {
+  if (s < 0 || s > 2.3) return 0;
+  if (s < 0.25) return s / 0.25;
+  if (s < 1.5) return 1;
+  return Math.max(0, 1 - (s - 1.5) / 0.8);
+}
+
 export function MetricCards() {
   const rootRef = useRef<HTMLDivElement>(null);
   const linesRef = useRef<SVGSVGElement>(null);
+  const returnRef = useRef<HTMLDivElement>(null);
+
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const numRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const arrowRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const statRefs = useRef<(HTMLElement | null)[][]>(METRICS.map(() => []));
-  const lineRefs = useRef<(SVGPathElement | null)[]>([]);
-  const dotRefs = useRef<(SVGCircleElement | null)[]>([]);
   const areaRefs = useRef<(SVGPathElement | null)[]>([]);
   const chartRefs = useRef<(SVGPathElement | null)[]>([]);
+  const lineRefs = useRef<(SVGPathElement | null)[]>([]);
+  const dotRefs = useRef<(SVGCircleElement | null)[]>([]);
 
   const cur = useRef<number[]>(METRICS.map((m) => m.base));
   const prev = useRef<number[]>(METRICS.map((m) => m.base));
@@ -57,8 +70,10 @@ export function MetricCards() {
     // value only lifts the newest points at the right edge of the chart.
     const buf = METRICS.map((m) => new Float64Array(W).fill(m.base));
     const stepN = METRICS.map(() => 0);
-    let acc = 0;
+    let lastClock = story.simClock; // chart advances on scroll-driven sim time
     const stepW = CW / W;
+    let seenReleaseSeq = devices.releaseSeq;
+    let returnAt = -10;
 
     const yOf = (v: number, m: MetricDef, range: number) => {
       const ty = 1 - (v - m.disp[0]) / range;
@@ -95,22 +110,22 @@ export function MetricCards() {
       if (hidden) return;
 
       const kCount = 1 - Math.exp(-dt * 6);
-      // advance the shared sample clock; commit whole steps, keep the remainder
-      // as a fractional scroll offset so the chart glides instead of stepping
-      acc += dt;
+      // sample cadence rides the scroll-driven sim clock: commit whole steps,
+      // keep the remainder as a fractional offset so the chart glides. Idle
+      // scroll → no new samples (the history holds still).
+      const clock = story.simClock;
       let steps = 0;
-      while (acc >= ST && steps < 6) {
-        acc -= ST;
+      while (clock - lastClock >= ST && steps < 8) {
+        lastClock += ST;
         steps++;
       }
-      const phase = acc / ST;
+      const phase = (clock - lastClock) / ST;
 
       for (let i = 0; i < METRICS.length; i++) {
         const m = METRICS[i];
         const range = m.disp[1] - m.disp[0];
-        // value counts smoothly toward its (gently wobbling) target
-        let target = metricTarget(m);
-        if (m.id !== "temp") target += Math.sin(t * 0.25 + i * 1.7) * range * 0.01;
+        // value counts smoothly toward its live sim target (temp/humidity)
+        const target = metricTarget(m);
         cur.current[i] += (target - cur.current[i]) * kCount;
         const val = cur.current[i];
         const status = metricStatus(m, val);
@@ -170,6 +185,22 @@ export function MetricCards() {
         for (let s = 0; s < 4; s++) if (cells[s]) cells[s]!.textContent = fmt(stats[s], m.decimals);
       }
 
+      // "returning to recorded timeline" note (pulses when an override releases)
+      if (devices.releaseSeq !== seenReleaseSeq) {
+        seenReleaseSeq = devices.releaseSeq;
+        returnAt = t;
+      }
+      const rp = returnPulse(t - returnAt);
+      const rEl = returnRef.current;
+      if (rEl) {
+        if (rp < 0.01) {
+          if (rEl.style.display !== "none") rEl.style.display = "none";
+        } else {
+          if (rEl.style.display === "none") rEl.style.display = "";
+          rEl.style.opacity = (rp * vis).toFixed(3);
+        }
+      }
+
       // leader lines: sensor (projected) -> nearest card border
       for (let i = 0; i < METRICS.length; i++) {
         const s = sensorScreen[i];
@@ -205,7 +236,7 @@ export function MetricCards() {
         ))}
       </svg>
 
-      <div className="metrics-layer" ref={rootRef} style={{ opacity: 0 }} aria-hidden>
+      <div className="metrics-layer" ref={rootRef} style={{ opacity: 0 }}>
         {METRICS.map((m, i) => (
           <MetricCard
             key={m.id}
@@ -218,6 +249,15 @@ export function MetricCards() {
             areaEl={(el) => (areaRefs.current[i] = el)}
           />
         ))}
+
+        {/* output/control runtime widgets — AC between the telemetry cards, Luces at the room's bottom-left */}
+        <DeviceRuntimeCard d={DEVICES[1]} posClass="mc-ac" />
+        <DeviceRuntimeCard d={DEVICES[0]} posClass="mc-lights" />
+
+        <div className="dev-return" ref={returnRef} style={{ display: "none" }} aria-hidden>
+          <span className="dev-return-dot" />
+          Volviendo a la línea temporal registrada
+        </div>
       </div>
     </>
   );
@@ -248,7 +288,6 @@ function MetricCard({
       <div className="mc-head">
         <div className="mc-id">
           <div className="mc-title">{m.name}</div>
-          <div className="mc-sensor">{m.sensor}</div>
         </div>
         <div className="mc-seg">
           {SEGMENTS.map((s, i) => (

@@ -5,6 +5,7 @@ import { PerformanceMonitor, Preload, Stats } from "@react-three/drei";
 
 import { RoomScene } from "./RoomScene";
 import { StoryDirector } from "./StoryDirector";
+import { TraceTablet } from "./TraceTablet";
 import { concreteMat } from "./materials";
 
 // Clean neutral backdrop — the facility recedes into a soft dark grey (no glow).
@@ -69,6 +70,7 @@ export default function Scene() {
       <Backdrop />
       <Floor />
       <RoomScene />
+      <TraceTablet />
 
       <Preload all />
       {debug && <Stats />}

@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 
 import { HEADLINES, INTRO, NOTIFICATIONS, regRef } from "../scroll/story";
+import { ContactButton } from "./contact/ContactButton";
+import { LogoReveal } from "./LogoReveal";
 import { MetricCards } from "./MetricCards";
 import { Traceability } from "./Traceability";
 
@@ -65,17 +67,20 @@ export function Overlay() {
       <div className="final" ref={regRef("final")} style={{ opacity: 0 }}>
         {/* the brand mark (logo + Growcast) lands here as the single logo */}
         <div className="final-main">
+          <LogoReveal className="final-logo" size={240} />
           <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
-          <Link className="cta" to="/catalog">
-            Solicitar demo →
-          </Link>
+          <div className="final-cta-row">
+            <Link className="cta" to="/catalog">
+              Solicitar demo →
+            </Link>
+            <ContactButton label="Contacto" className="cta-ghost" />
+          </div>
+          <nav className="final-nav" aria-label="Secciones">
+            <Link to="/catalog">Catálogo</Link>
+            <Link to="/faqs">Preguntas frecuentes</Link>
+            <Link to="/testimonios">Testimonios</Link>
+          </nav>
         </div>
-        <nav className="final-nav" aria-label="Secciones">
-          <span className="nav-label">Explorar</span>
-          <Link to="/catalog">Catálogo</Link>
-          <Link to="/faqs">Preguntas frecuentes</Link>
-          <Link to="/testimonios">Testimonios</Link>
-        </nav>
         <footer className="final-footer">
           <a className="wa-cta" href={WHATSAPP} target="_blank" rel="noreferrer">
             <span className="wa-dot" /> Escribinos por WhatsApp

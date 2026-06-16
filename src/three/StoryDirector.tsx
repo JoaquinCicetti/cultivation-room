@@ -3,8 +3,12 @@ import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 
 import { GROW_LIGHTS } from "./sceneData";
+import { lightGlowMat } from "./materials";
 import {
   clamp01,
+  DEVICES,
+  deviceScreen,
+  devices,
   lerp,
   METRICS,
   NOTIFICATIONS,
@@ -49,6 +53,7 @@ export function StoryDirector() {
   const hemiRef = useRef<THREE.HemisphereLight>(null);
   const redFillRef = useRef<THREE.DirectionalLight>(null);
   const growRef = useRef<THREE.Group>(null);
+  const growK = useRef(1); // smoothed grow-light factor (Luces card drives it)
 
   // shift the rendered scene up 10% / right 5% (room sits higher-right)
   useLayoutEffect(() => {
@@ -66,7 +71,7 @@ export function StoryDirector() {
     const k = 1 - Math.exp(-delta * 5.5);
     scrollState.current += (scrollState.target - scrollState.current) * k;
     const p = scrollState.current;
-    updateStory(p);
+    updateStory(p, delta);
     const t = state.clock.elapsedTime;
 
     // --- clean opening reveal: fade in from dark + a subtle settle/zoom-in ---
@@ -89,6 +94,17 @@ export function StoryDirector() {
     if (growRef.current) {
       growRef.current.position.y = lerp(0, 9.5, story.traceIn);
       growRef.current.visible = story.traceIn < 0.995;
+      // the Luces card is the source of truth: dim the pools + emissive strip to
+      // match its on/level (smoothed, so toggling fades — never blinks).
+      const targetK = devices.lights.on ? devices.lights.level : 0;
+      growK.current += (targetK - growK.current) * k;
+      const gk = growK.current;
+      for (const g of growRef.current.children) {
+        const pls = g.children;
+        if (pls[0]) (pls[0] as THREE.PointLight).intensity = 1.7 * gk;
+        if (pls[1]) (pls[1] as THREE.PointLight).intensity = 0.85 * gk;
+      }
+      lightGlowMat.emissiveIntensity = 0.08 + 1.62 * gk;
     }
 
     // --- stable camera (no float / per-act drift) — subtle settle on load ---
@@ -113,47 +129,31 @@ export function StoryDirector() {
     // --- DOM: brand mark morph (hero -> top-left header -> final) ---
     const bm = ui["brandmark"];
     if (bm) {
-      const k1 = 1 - smooth(clamp01(p / 0.09));
-      const k2 = smooth(story.finalP);
-      const big = Math.max(k1, k2);
+      // hero -> top-left header only; the ending logo is the LogoReveal mark, so
+      // the brandmark fades out as the final section arrives (no double logo).
+      const big = 1 - smooth(clamp01(p / 0.09));
       const scale = 0.34 + 0.66 * big;
       const tx = 12 * big;
       const ty = (size.height * 0.3 - 26) * big;
-      bm.style.opacity = rev.toFixed(3);
+      bm.style.opacity = (rev * (1 - smooth(story.finalP))).toFixed(3);
       bm.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${scale.toFixed(3)})`;
     }
     setEl("introTag", rev * (1 - smooth(clamp01(p / 0.045))));
     setEl("scrollHint", story.scrollHint);
     setEl("scrim", story.scrim);
 
-    // --- DOM: traceability — static left title + detaching/enlarging tablet ---
+    // --- DOM: traceability — static left title (the report is the 3D tablet) ---
     const traceOut = 1 - smooth(seg(story.p, 0.9, 0.95));
     setEl("trace2Left", story.traceIn * traceOut, (1 - story.traceIn) * 18);
-    const tablet = ui["tablet"];
-    if (tablet) {
-      const W = size.width;
-      const H = size.height;
-      const tin = story.traceIn;
-      // interpolate from the on-wall panel rect to the large right-side device
-      const L = lerp(0.7 * W, 0.42 * W, tin);
-      const T = lerp(0.34 * H, 0.055 * H, tin);
-      const WD = lerp(0.14 * W, 0.55 * W, tin);
-      const HT = lerp(0.2 * H, 0.89 * H, tin);
-      tablet.style.left = `${L.toFixed(1)}px`;
-      tablet.style.top = `${T.toFixed(1)}px`;
-      tablet.style.width = `${WD.toFixed(1)}px`;
-      tablet.style.height = `${HT.toFixed(1)}px`;
-      const op = clamp01(seg(story.p, 0.61, 0.66)) * traceOut;
-      tablet.style.opacity = op.toFixed(3);
-      tablet.style.display = op < 0.01 ? "none" : "";
-    }
-    // internal report scroll: the page is "pinned", only the content moves
+    // internal report scroll: only the content inside the tablet screen moves
     const content = ui["tabletContent"];
     const screenEl = ui["tabletScreen"];
     if (content && screenEl) {
       const maxScroll = Math.max(0, content.scrollHeight - screenEl.clientHeight);
       content.style.transform = `translateY(${(-story.traceScroll * maxScroll).toFixed(1)}px)`;
     }
+    const shell = ui["traceShell"];
+    if (shell) shell.style.opacity = traceOut.toFixed(3); // fade the tablet out into the final
 
     // --- DOM: final ---
     setEl("final", story.finalP);
@@ -172,6 +172,17 @@ export function StoryDirector() {
       if (room) projVec.applyMatrix4(room.matrixWorld);
       projVec.project(camera);
       const s = sensorScreen[i];
+      s.x = (projVec.x * 0.5 + 0.5) * size.width;
+      s.y = (-projVec.y * 0.5 + 0.5) * size.height;
+      s.vis = projVec.z < 1 ? 1 : 0;
+    }
+    // --- project device anchors -> screen px for the device card leader lines ---
+    for (let i = 0; i < DEVICES.length; i++) {
+      const a = DEVICES[i].anchor;
+      projVec.set(a[0], a[1], a[2]);
+      if (room) projVec.applyMatrix4(room.matrixWorld);
+      projVec.project(camera);
+      const s = deviceScreen[i];
       s.x = (projVec.x * 0.5 + 0.5) * size.width;
       s.y = (-projVec.y * 0.5 + 0.5) * size.height;
       s.vis = projVec.z < 1 ? 1 : 0;
