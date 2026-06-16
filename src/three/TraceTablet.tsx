@@ -37,7 +37,7 @@ export function TraceTablet() {
     const mobile = size.width < 768;
     // Desktop: centre-right (the title keeps the left side). Mobile: centre
     // horizontally and drop LOW (below the stacked title text), overlapping room.
-    ndc.set(mobile ? 0 : 0.26, mobile ? -0.72 : 0.02, -0.3).unproject(camera);
+    ndc.set(mobile ? 0 : 0.26, mobile ? -0.78 : 0.02, -0.3).unproject(camera);
     endPos.copy(ndc);
     g.position.lerpVectors(START, endPos, e);
     g.quaternion.copy(Q_WALL).slerp(camera.quaternion, e); // wall-flush → billboard
@@ -45,7 +45,7 @@ export function TraceTablet() {
     // Desktop fits to viewport height. Mobile uses a fixed larger scale (~90% of
     // the screen width) — the lower mobile camera zoom otherwise shrinks the
     // CSS3D report, so a constant here compensates to keep it big and legible.
-    const endS = mobile ? 0.48 : size.height / 2320;
+    const endS = mobile ? 0.4 : size.height / 2320;
     g.scale.setScalar(THREE.MathUtils.lerp(endS * 0.34, endS, e));
   });
 

@@ -932,7 +932,8 @@ canvas {
   .headline {
     max-width: none;
   }
-  .headline .kicker {
+  .headline .kicker,
+  .trace2 .trace2-left .kicker {
     margin-bottom: 0.6rem;
     font-size: 0.66rem;
   }
@@ -959,7 +960,8 @@ canvas {
     width: auto;
   }
   .trace2 .trace2-left h2 {
-    font-size: clamp(1.5rem, 6vw, 1.9rem);
+    font-size: clamp(1.5rem, 6.2vw, 1.8rem);
+    line-height: 1.18;
   }
 
   /* ---- sensor / equipment cards: small chips in the MIDDLE band ---- */
@@ -991,7 +993,7 @@ canvas {
     font-size: 0.82rem;
   }
   .mc-num {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
   .rt-pct {
     font-size: 1.25rem;
@@ -1006,7 +1008,7 @@ canvas {
   }
   .rtcard .rt-pct-row::before {
     content: "Apagado";
-    font-size: 1.35rem;
+    font-size: 1.05rem;
     font-weight: 680;
     line-height: 1;
     color: var(--muted);
@@ -1043,16 +1045,44 @@ canvas {
     left: 53vw;
   }
   .mc-ac {
-    top: 45vh;
+    top: 48vh;
     left: 5vw;
   }
   .mc-lights {
-    top: 45vh;
+    top: 48vh;
     left: 53vw;
   }
 
   .scroll-hint {
     bottom: 2vh;
+  }
+
+  /* ---- ending screen: smaller animated logo + footer that can't overlap ---- */
+  .final-logo.logo-reveal {
+    width: 132px !important;
+    height: 132px !important;
+  }
+  .final-logo svg {
+    width: 132px;
+    height: 132px;
+  }
+  .final-main {
+    top: 38vh;
+    gap: 0.85rem;
+    width: calc(100% - 2.7rem);
+  }
+  /* footer stacks (WhatsApp over the route links) and centres, below the main
+     block — never overlapping the nav routes */
+  .final-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.6rem;
+    bottom: 1.6vh;
+  }
+  .foot-links {
+    justify-content: center;
+    gap: 0.5rem 1rem;
   }
 }
 
@@ -1214,20 +1244,21 @@ canvas {
   width: min(34vw, 30rem);
   will-change: opacity, transform;
 }
+/* unified with .headline (all 5 sections share the same kicker→title→body rhythm) */
 .trace2-left h2 {
-  margin: 0.8rem 0 0;
-  font-size: clamp(1.8rem, 3vw, 2.9rem);
-  line-height: 1.05;
+  margin: 0;
+  font-size: clamp(2rem, 3.8vw, 3.3rem);
+  line-height: 1.06;
   font-weight: 690;
   letter-spacing: -0.03em;
   color: var(--ink);
 }
 .trace2-left p {
-  margin: 1rem 0 0;
+  margin: 0.9rem 0 0;
   max-width: 38ch;
-  font-size: clamp(0.9rem, 1.1vw, 1.02rem);
-  line-height: 1.6;
-  color: var(--muted);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.4;
+  color: #d4dcc4;
 }
 
 /* the industrial control tablet — rect is set imperatively by the director */
@@ -1593,6 +1624,9 @@ canvas {
   margin-top: 0.4rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  /* unified, wide-enough size across every usage (primary + ghost) */
+  min-width: 12.5rem;
   padding: 0.8rem 1.7rem;
   border: none;
   border-radius: 999px;

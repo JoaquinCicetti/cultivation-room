@@ -193,12 +193,12 @@ export function StoryDirector() {
       let tx: number;
       let ty: number;
       if (mobile) {
-        // hero (big=1): centre the lockup horizontally and drop it just above the
-        // centred hero copy so logo + texts read as one group. header (big=0):
-        // back to the top-left CSS anchor (tx/ty → 0). offset* ignore transform.
+        // hero (big=1): centre the lockup horizontally and keep it NEAR THE TOP
+        // (minimal top whitespace) so it never reaches the centred hero copy
+        // lower down. header (big=0): back to the top-left CSS anchor (tx/ty → 0).
         const w = bm.offsetWidth * scale;
         tx = ((size.width - w) / 2 - bm.offsetLeft) * big;
-        ty = (size.height * 0.21 - bm.offsetTop) * big;
+        ty = (size.height * 0.06 - bm.offsetTop) * big;
       } else {
         tx = 12 * big;
         ty = (size.height * 0.3 - 26) * big;

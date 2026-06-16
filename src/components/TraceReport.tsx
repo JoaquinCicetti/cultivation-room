@@ -33,27 +33,59 @@ export function TraceReport() {
               <span className="cap">Lote de producción</span>
               <h3>{BATCH.id}</h3>
               <dl className="lot-grid">
-                <div><dt>Variedad</dt><dd>{BATCH.cultivar}</dd></div>
-                <div><dt>Inicio</dt><dd>{BATCH.start}</dd></div>
-                <div><dt>Zona</dt><dd>{BATCH.zone}</dd></div>
-                <div><dt>Estado</dt><dd><span className="pill">{BATCH.state}</span></dd></div>
+                <div>
+                  <dt>Variedad</dt>
+                  <dd>{BATCH.cultivar}</dd>
+                </div>
+                <div>
+                  <dt>Inicio</dt>
+                  <dd>{BATCH.start}</dd>
+                </div>
+                <div>
+                  <dt>Zona</dt>
+                  <dd>{BATCH.zone}</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span className="pill">{BATCH.state}</span>
+                  </dd>
+                </div>
               </dl>
             </div>
             <div className="tab-qr">
               <Qr size={150} />
-              <span className="cap">Pasaporte del lote</span>
+              <span className="cap">Identificador</span>
             </div>
           </div>
 
           <Section label="A" title="Información del lote">
             <div className="card tab-card">
               <dl className="kv">
-                <div><dt>Lote</dt><dd>{BATCH.id}</dd></div>
-                <div><dt>Cultivar</dt><dd>{BATCH.cultivar}</dd></div>
-                <div><dt>Zona de cultivo</dt><dd>{BATCH.zone}</dd></div>
-                <div><dt>Fecha de inicio</dt><dd>{BATCH.start}</dd></div>
-                <div><dt>Fecha de cosecha</dt><dd>{BATCH.harvest}</dd></div>
-                <div><dt>Operario</dt><dd>{BATCH.operator}</dd></div>
+                <div>
+                  <dt>Lote</dt>
+                  <dd>{BATCH.id}</dd>
+                </div>
+                <div>
+                  <dt>Cultivar</dt>
+                  <dd>{BATCH.cultivar}</dd>
+                </div>
+                <div>
+                  <dt>Zona de cultivo</dt>
+                  <dd>{BATCH.zone}</dd>
+                </div>
+                <div>
+                  <dt>Fecha de inicio</dt>
+                  <dd>{BATCH.start}</dd>
+                </div>
+                <div>
+                  <dt>Fecha de cosecha</dt>
+                  <dd>{BATCH.harvest}</dd>
+                </div>
+                <div>
+                  <dt>Operario</dt>
+                  <dd>{BATCH.operator}</dd>
+                </div>
               </dl>
             </div>
           </Section>
@@ -93,7 +125,9 @@ export function TraceReport() {
                   {CONSUMPTION.map((c) => (
                     <div key={c.label} className="bar-row">
                       <span className="bar-label">{c.label}</span>
-                      <span className="bar"><i style={{ width: `${Math.round(c.pct * 100)}%` }} /></span>
+                      <span className="bar">
+                        <i style={{ width: `${Math.round(c.pct * 100)}%` }} />
+                      </span>
                       <strong className="bar-value">{c.value}</strong>
                     </div>
                   ))}
@@ -129,14 +163,24 @@ export function TraceReport() {
             </div>
           </Section>
 
-          <div className="tab-foot">Registro verificable · Growcast · {BATCH.id}</div>
+          <div className="tab-foot">
+            Registro verificable · Growcast · {BATCH.id}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Section({ label, title, children }: { label: string; title: string; children: ReactNode }) {
+function Section({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="tab-section">
       <div className="tab-section-head">

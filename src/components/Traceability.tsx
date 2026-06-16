@@ -9,7 +9,7 @@ export function Traceability() {
     <div className="trace2">
       <div className="trace2-left" ref={regRef("trace2Left")} style={{ opacity: 0 }}>
         <span className="kicker">05 · Trazabilidad</span>
-        <h2>Trazabilidad completa de cada lote.</h2>
+        <h2>Trazabilidad completa de cada ejemplar.</h2>
         <p>
           Cada medición, evento, alarma y acción ejecutada queda registrada automáticamente para auditoría,
           análisis y seguimiento productivo.

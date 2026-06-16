@@ -97,13 +97,13 @@ export function Overlay() {
           <LogoReveal className="final-logo" size={240} />
           <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
           <div className="final-cta-row">
-            <Link className="cta" to="/catalog">
-              Solicitar demo →
+            {/* primary CTA opens the contact/demo dialog form */}
+            <ContactButton label="Solicitar demo →" />
+            <Link className="cta cta-ghost" to="/catalog">
+              Catálogo
             </Link>
-            <ContactButton label="Contacto" className="cta-ghost" />
           </div>
           <nav className="final-nav" aria-label="Secciones">
-            <Link to="/catalog">Catálogo</Link>
             <Link to="/faqs">Preguntas frecuentes</Link>
             <Link to="/testimonios">Testimonios</Link>
           </nav>
