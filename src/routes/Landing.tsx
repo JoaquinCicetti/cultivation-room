@@ -7,7 +7,7 @@ import { scrollState } from "../scroll/story";
 
 const Scene = lazy(() => import("../three/Scene"));
 
-const TOTAL_VH = 1050;
+const TOTAL_VH = 1300;
 
 export default function Landing() {
   useLayoutEffect(() => {
@@ -30,7 +30,7 @@ export default function Landing() {
 
       {/* right-column canvas (the floating room) */}
       <div className="stage">
-        <Suspense fallback={<SceneLoader />}>
+        <Suspense fallback={null}>
           <Scene />
         </Suspense>
       </div>
@@ -38,13 +38,5 @@ export default function Landing() {
       {/* full-screen 2D layer (left text, toasts, trace, final, brand header) */}
       <Overlay />
     </>
-  );
-}
-
-function SceneLoader() {
-  return (
-    <div className="scene-loader">
-      <span>Cargando…</span>
-    </div>
   );
 }

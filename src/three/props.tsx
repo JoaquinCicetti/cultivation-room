@@ -1,9 +1,10 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { RoundedBox } from "@react-three/drei";
 
 import * as mat from "./materials";
-import { AC_POS, CONTROLLER_POS, ROOM_D, ROOM_W, TANK_POS, VAPORIZER_POS, WALL_THICK, type Vec3 } from "./sceneData";
+import { AC_POS, CONTROLLER_POS, RACKS, ROOM_D, ROOM_W, TANK_POS, VAPORIZER_POS, WALL_THICK, type Vec3 } from "./sceneData";
 import { devices, METRICS, story } from "../scroll/story";
 
 // --- Vaporizer / humidifier with a rising mist plume ------------------------
@@ -85,6 +86,16 @@ export function AirConditioner() {
       <mesh material={mat.acBodyMat} castShadow>
         <boxGeometry args={[1.15, 0.32, 0.26]} />
       </mesh>
+      {/* plastic housing seam (front parting line) */}
+      <mesh position={[0, -0.02, 0.131]} material={mat.acVentMat}>
+        <boxGeometry args={[1.14, 0.004, 0.004]} />
+      </mesh>
+      {/* wall mounting brackets behind the unit */}
+      {[-0.45, 0.45].map((x, i) => (
+        <mesh key={i} position={[x, 0, -0.16]} material={mat.boxDarkMat} castShadow>
+          <boxGeometry args={[0.1, 0.24, 0.06]} />
+        </mesh>
+      ))}
       {/* lime status line */}
       <mesh position={[0.4, 0.08, 0.135]} material={mat.acAccentMat}>
         <boxGeometry args={[0.28, 0.012, 0.01]} />
@@ -140,6 +151,24 @@ export function IrrigationTank() {
       <mesh position={[tx, 0.12 + 0.02, tz]} material={mat.tankCapMat}>
         <cylinderGeometry args={[0.36, 0.36, 0.04, 20]} />
       </mesh>
+      {/* painted spec label band */}
+      <mesh position={[tx, bodyY + 0.05, tz + 0.345]} material={mat.labelMat}>
+        <boxGeometry args={[0.34, 0.22, 0.006]} />
+      </mesh>
+      {/* outlet valve + handle + flange near the base */}
+      <mesh position={[tx + 0.33, 0.12 + 0.22, tz]} rotation={[0, 0, Math.PI / 2]} material={mat.valveMat} castShadow>
+        <cylinderGeometry args={[0.035, 0.035, 0.12, 12]} />
+      </mesh>
+      <mesh position={[tx + 0.4, 0.12 + 0.22, tz]} material={mat.valveMat}>
+        <cylinderGeometry args={[0.05, 0.05, 0.02, 14]} />
+      </mesh>
+      <mesh position={[tx + 0.42, 0.12 + 0.22, tz]} rotation={[0, 0, Math.PI / 2]} material={mat.valveMat}>
+        <torusGeometry args={[0.045, 0.008, 8, 16]} />
+      </mesh>
+      {/* top inlet fitting */}
+      <mesh position={[tx + 0.18, 0.12 + bodyH - 0.02, tz]} material={mat.pipeMat}>
+        <cylinderGeometry args={[0.03, 0.03, 0.08, 12]} />
+      </mesh>
       <mesh position={[tx + 0.34, 0.12 + 0.9, tz]} material={mat.pipeMat}>
         <cylinderGeometry args={[0.022, 0.022, 1.4, 8]} />
       </mesh>
@@ -153,7 +182,28 @@ export function IrrigationTank() {
   );
 }
 
-// --- Small sensor nodes at each metric anchor (leader lines land here) ------
+// Shared Growcast sensor enclosure — TH / THP / THC all use the same body: a
+// compact white module with a dark vented front face. The caller adds the status
+// LED (so its colour can be driven per sensor).
+function SensorBody() {
+  return (
+    <group>
+      <RoundedBox args={[0.12, 0.085, 0.042]} radius={0.014} smoothness={4} material={mat.acBodyMat} castShadow />
+      {/* recessed dark front */}
+      <mesh position={[0, 0, 0.022]} material={mat.panelDarkMat}>
+        <boxGeometry args={[0.098, 0.062, 0.005]} />
+      </mesh>
+      {/* fine vent slits on the right of the face */}
+      {[-0.014, 0, 0.014].map((y, i) => (
+        <mesh key={i} position={[0.022, y, 0.026]} material={mat.boxDarkMat}>
+          <boxGeometry args={[0.04, 0.004, 0.003]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// --- Sensor nodes at each metric anchor (leader lines land here) ------------
 export function Sensors() {
   const tempLed = useRef<THREE.MeshStandardMaterial>(null);
 
@@ -174,11 +224,9 @@ export function Sensors() {
         const pos: Vec3 = [m.anchor[0], m.anchor[1] - 0.12, m.anchor[2]];
         return (
           <group key={m.id} position={pos}>
-            <mesh material={mat.sensorMat} castShadow>
-              <boxGeometry args={[0.08, 0.13, 0.045]} />
-            </mesh>
-            <mesh position={[0, 0.04, 0.03]}>
-              <sphereGeometry args={[0.009, 8, 8]} />
+            <SensorBody />
+            <mesh position={[-0.03, 0.016, 0.026]}>
+              <sphereGeometry args={[0.007, 8, 8]} />
               {m.id === "temp" ? (
                 <meshStandardMaterial ref={tempLed} color={0x5fbf30} emissive={0x5fbf30} emissiveIntensity={1.4} roughness={0.3} />
               ) : (
@@ -202,46 +250,28 @@ export function Infrastructure() {
 
   return (
     <group>
-      {/* ---- back-wall cable tray + drop conduits ---- */}
-      <mesh position={[0.1, 2.28, backZ]} material={mat.trayMat} castShadow>
-        <boxGeometry args={[4.7, 0.05, 0.13]} />
-      </mesh>
-      <mesh position={[0.1, 2.31, backZ + 0.07]} material={mat.conduitMat}>
-        <boxGeometry args={[4.7, 0.07, 0.012]} />
-      </mesh>
-      {/* conduits dropping from the tray to each control box / the AC */}
-      {[-1.2, 1.2, 2.15].map((x, i) => (
-        <mesh key={i} position={[x, i === 2 ? 2.14 : 1.98, backZ + 0.02]} material={mat.conduitMat}>
-          <boxGeometry args={[0.045, i === 2 ? 0.3 : 0.62, 0.045]} />
+      {/* ---- back-left corner piping riser bundle (utility network) ---- */}
+      <group position={[leftX + 0.08, 0, backZ + 0.08]}>
+        {[
+          { x: 0.0, z: 0.0, r: 0.03, c: mat.pipeMat },
+          { x: 0.07, z: 0.0, r: 0.022, c: mat.pipeMat },
+          { x: 0.0, z: 0.07, r: 0.018, c: mat.conduitMat },
+        ].map((p, i) => (
+          <mesh key={i} position={[p.x, 1.25, p.z]} material={p.c}>
+            <cylinderGeometry args={[p.r, p.r, 2.2, 10]} />
+          </mesh>
+        ))}
+        {/* pipe clamps fixing the bundle to the corner */}
+        {[0.55, 1.45, 2.15].map((y, i) => (
+          <mesh key={i} position={[0.035, y, 0.035]} material={mat.boxDarkMat}>
+            <boxGeometry args={[0.13, 0.03, 0.13]} />
+          </mesh>
+        ))}
+        {/* elbow turning along the back wall toward the controller */}
+        <mesh position={[0.4, 2.3, 0]} rotation={[0, 0, Math.PI / 2]} material={mat.pipeMat}>
+          <cylinderGeometry args={[0.022, 0.022, 0.9, 8]} />
         </mesh>
-      ))}
-
-      {/* ---- two wall-mounted control / automation boxes flanking the controller ---- */}
-      {[-1.2, 1.2].map((x, i) => (
-        <group key={i} position={[x, 1.5, backZ + 0.02]}>
-          <mesh material={mat.boxMat} castShadow>
-            <boxGeometry args={[0.34, 0.46, 0.14]} />
-          </mesh>
-          <mesh position={[0, 0.02, 0.08]} material={mat.boxDarkMat}>
-            <boxGeometry args={[0.27, 0.34, 0.02]} />
-          </mesh>
-          <mesh position={[0.11, 0.18, 0.08]} material={mat.ledGreenMat}>
-            <sphereGeometry args={[0.009, 8, 8]} />
-          </mesh>
-          {/* conduit gland at the bottom */}
-          <mesh position={[0, -0.27, 0.02]} material={mat.conduitMat}>
-            <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* ---- left-wall vertical conduit run (organized cable routing) ---- */}
-      <mesh position={[leftX, 1.05, -0.9]} material={mat.conduitMat}>
-        <boxGeometry args={[0.05, 1.7, 0.05]} />
-      </mesh>
-      <mesh position={[leftX, 1.88, -0.45]} material={mat.conduitMat}>
-        <boxGeometry args={[0.045, 0.045, 0.95]} />
-      </mesh>
+      </group>
 
       {/* ---- nutrient dosing + irrigation pump skid (beside the reservoir) ---- */}
       <group position={[dose[0] + 0.55, 0.12, dose[2] + 0.85]}>
@@ -279,6 +309,228 @@ export function Infrastructure() {
             <boxGeometry args={[0.04, 0.06, 0.05]} />
           </mesh>
         ))}
+      </group>
+    </group>
+  );
+}
+
+// --- Exterior threshold: grounds the room in a larger facility --------------
+// A wall control/breaker cabinet, an access door with an illuminated EXIT sign,
+// and a couple of safety bollards. Deliberately restrained — industrial, not busy.
+export function Exterior() {
+  const leftFace = -ROOM_W / 2 + WALL_THICK; // interior face of left wall
+
+  // small "EXIT" sign face texture (white legend on red)
+  const exitTex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 128;
+    c.height = 64;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#e23a26";
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.fillStyle = "#fff";
+    ctx.font = "700 34px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("EXIT", 64, 36);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+
+  // door sits on the interior face of the left wall and protrudes INTO the room
+  const doorFace = leftFace + 0.02;
+  return (
+    <group>
+      {/* ---- sliding EXIT door on the LEFT wall (the face-on "back wall"),
+              right side, rotated to face into the room ---- */}
+      <group position={[doorFace, 0, -1.55]} rotation={[0, Math.PI / 2, 0]}>
+        {/* recessed frame */}
+        <mesh position={[0, 0.12 + 1.06, -0.01]} material={mat.doorFrameMat} castShadow>
+          <boxGeometry args={[1.12, 2.18, 0.06]} />
+        </mesh>
+        {/* dark sliding leaf (with a vision panel) */}
+        <mesh position={[0, 0.12 + 1.04, 0.05]} material={mat.doorMat} castShadow>
+          <boxGeometry args={[0.96, 2.02, 0.05]} />
+        </mesh>
+        <mesh position={[0, 0.12 + 1.55, 0.08]} material={mat.screenGlassMat}>
+          <boxGeometry args={[0.5, 0.55, 0.02]} />
+        </mesh>
+        {/* overhead sliding track + roller head */}
+        <mesh position={[0, 0.12 + 2.16, 0.05]} material={mat.boxDarkMat}>
+          <boxGeometry args={[1.3, 0.07, 0.06]} />
+        </mesh>
+        {/* recessed pull handle */}
+        <mesh position={[0.3, 0.12 + 1.04, 0.08]} material={mat.cabinetMat}>
+          <boxGeometry args={[0.05, 0.55, 0.03]} />
+        </mesh>
+        {/* illuminated EXIT sign above the door */}
+        <mesh position={[0, 0.12 + 2.34, 0.06]} material={mat.exitSignMat}>
+          <boxGeometry args={[0.36, 0.17, 0.05]} />
+        </mesh>
+        <mesh position={[0, 0.12 + 2.34, 0.091]}>
+          <planeGeometry args={[0.32, 0.14]} />
+          <meshBasicMaterial map={exitTex} toneMapped={false} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+// --- Growcast Industria electrical panel (centerpiece of the back/right wall) --
+// White industrial enclosure with the Growcast logo, a "Growcast Industria"
+// legend and a row of physical toggle switches. Flanked by the AC + a wall
+// sensor and wired to both with black right-angled conduit.
+const BACK_WALL_Z = -ROOM_D / 2 + 0.15; // common face for back-wall equipment
+
+function panelFaceTexture(): THREE.CanvasTexture {
+  const W = 360;
+  const H = 500;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  // clean white panel face + subtle border
+  ctx.fillStyle = "#eef0ea";
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "#d4d7cd";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(9, 9, W - 18, H - 18);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const img = new Image();
+  img.onload = () => {
+    // big BLACK centered logo (recolor the lime glyph to black via source-in)
+    const L = 212;
+    const off = document.createElement("canvas");
+    off.width = off.height = L;
+    const o = off.getContext("2d")!;
+    o.drawImage(img, 0, 0, L, L);
+    o.globalCompositeOperation = "source-in";
+    o.fillStyle = "#0c0d0c";
+    o.fillRect(0, 0, L, L);
+    ctx.drawImage(off, (W - L) / 2, 62);
+    // compact wordmark caption under the logo
+    ctx.fillStyle = "#15170f";
+    ctx.font = "700 30px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GROWCAST", W / 2, 318);
+    ctx.fillStyle = "#8b9080";
+    ctx.font = "600 15px Inter, system-ui, sans-serif";
+    ctx.fillText("I N D U S T R I A", W / 2, 344);
+    tex.needsUpdate = true;
+  };
+  img.src = "/logo.svg";
+  return tex;
+}
+
+export function ElectricalPanel() {
+  const faceTex = useMemo(panelFaceTexture, []);
+  const W = 0.72;
+  const H = 1.04;
+  const D = 0.12;
+  return (
+    <group position={[0, 1.46, BACK_WALL_Z]}>
+      {/* white enclosure */}
+      <mesh material={mat.whitePanelMat} castShadow receiveShadow>
+        <boxGeometry args={[W, H, D]} />
+      </mesh>
+      {/* printed front face (logo + Growcast Industria + legends) */}
+      <mesh position={[0, 0, D / 2 + 0.001]}>
+        <planeGeometry args={[W - 0.06, H - 0.06]} />
+        <meshStandardMaterial map={faceTex} roughness={0.5} metalness={0.05} envMapIntensity={0.5} />
+      </mesh>
+      {/* hinge-side seam */}
+      <mesh position={[W / 2 - 0.025, 0, D / 2 + 0.004]} material={mat.boxDarkMat}>
+        <boxGeometry args={[0.012, H - 0.12, 0.02]} />
+      </mesh>
+      {/* smooth toggle switches below the logo (rounded housing + sliding knob) */}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const on = i % 2 === 0;
+        const x = -0.24 + i * 0.12;
+        return (
+          <group key={i} position={[x, -0.27, D / 2 + 0.012]}>
+            <RoundedBox args={[0.098, 0.052, 0.024]} radius={0.01} smoothness={4} material={mat.panelDarkMat} castShadow />
+            <RoundedBox
+              args={[0.044, 0.044, 0.03]}
+              radius={0.012}
+              smoothness={4}
+              position={[on ? 0.024 : -0.024, 0, 0.007]}
+              material={on ? mat.ledGreenMat : mat.cabinetMat}
+            />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+// Wall-mounted Sensor TH flanking the panel on the left of the equipment wall.
+export function WallSensorTH() {
+  return (
+    <group position={[-2.2, 1.62, BACK_WALL_Z]}>
+      <SensorBody />
+      <mesh position={[-0.03, 0.016, 0.026]} material={mat.sensorLedMat}>
+        <sphereGeometry args={[0.007, 8, 8]} />
+      </mesh>
+    </group>
+  );
+}
+
+// Neat right-angled black conduit wiring the panel to the AC (right) and the
+// wall Sensor TH (left): a clean horizontal run above the devices with tidy
+// vertical drops into each — no messy diagonals.
+export function PanelConduits() {
+  const cz = BACK_WALL_Z + 0.04; // proud of the wall, in front of the equipment
+  const RUN_Y = 1.92; // single clean run height above the panel + devices
+  const seg = (pos: Vec3, size: Vec3) => (
+    <mesh position={pos} material={mat.blackConduitMat}>
+      <boxGeometry args={size} />
+    </mesh>
+  );
+  const T = 0.026; // conduit thickness
+  return (
+    <group>
+      {/* panel → AC (right): up off the panel, across, down into the unit */}
+      {seg([0.3, 1.85, cz], [T, 0.16, T])}
+      {seg([1.25, RUN_Y, cz], [1.9, T, T])}
+      {seg([2.2, 1.96, cz], [T, 0.1, T])}
+      {/* panel → sensor (left) */}
+      {seg([-0.3, 1.85, cz], [T, 0.16, T])}
+      {seg([-1.25, RUN_Y, cz], [1.9, T, T])}
+      {seg([-2.2, 1.79, cz], [T, 0.26, T])}
+    </group>
+  );
+}
+
+// A second Sensor TH hung by a VISIBLE wire from the central rack's LED bar,
+// dropping over the canopy.
+export function HangingSensorTH() {
+  const rack = RACKS[1]; // central bench
+  const x = rack.x;
+  const z = rack.z + 0.95; // along the bench
+  const attachY = rack.lightY - 0.05; // clip just under the rack's LED bar
+  const sensorY = 1.4; // hangs over the canopy
+  return (
+    <group>
+      {/* visible drop wire from the rack */}
+      <mesh position={[x, (attachY + sensorY) / 2, z]} material={mat.cableMat}>
+        <cylinderGeometry args={[0.008, 0.008, attachY - sensorY, 8]} />
+      </mesh>
+      {/* clip onto the rack's LED bar */}
+      <mesh position={[x, attachY, z]} material={mat.boxDarkMat}>
+        <boxGeometry args={[0.035, 0.03, 0.035]} />
+      </mesh>
+      <group position={[x, sensorY, z]}>
+        {/* cable gland on top of the sensor */}
+        <mesh position={[0, 0.052, 0]} material={mat.boxDarkMat}>
+          <cylinderGeometry args={[0.008, 0.011, 0.025, 8]} />
+        </mesh>
+        <SensorBody />
+        <mesh position={[-0.03, 0.016, 0.026]} material={mat.sensorLedMat}>
+          <sphereGeometry args={[0.007, 8, 8]} />
+        </mesh>
       </group>
     </group>
   );
@@ -368,6 +620,10 @@ export function Controller() {
       <mesh position={[0, 0.03, 0.04]}>
         <planeGeometry args={[0.42, 0.26]} />
         <meshBasicMaterial map={screenTexture} toneMapped={false} transparent />
+      </mesh>
+      {/* glossy protective glass over the display (sharp reflections) */}
+      <mesh position={[0, 0.01, 0.046]} material={mat.screenGlassMat}>
+        <boxGeometry args={[0.5, 0.34, 0.006]} />
       </mesh>
       {/* steady alarm indicator (green → red with the alert, never flashing) */}
       <mesh position={[-0.2, -0.15, 0.045]}>

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 
 // ---------------------------------------------------------------------------
-// Sparse premium cultivation room — deliberate composition with negative space.
+// Commercial cultivation room — strict parallel rack grid (rolling benches),
+// rows running along the room depth axis. Engineered, uniform, no randomness.
 // ---------------------------------------------------------------------------
 export const ROOM_W = 7;
 export const ROOM_D = 5.5;
@@ -16,7 +17,7 @@ const SURFACE_Y = TOP_RAIL_Y + 0.015;
 
 // Base unit geometries — one per shape, scaled per-instance (one draw call each).
 export const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
-export const POT_GEO = new THREE.CylinderGeometry(1, 0.78, 1, 10);
+export const POT_GEO = new THREE.CylinderGeometry(1, 0.82, 1, 8); // square-ish nursery pot
 export const CYL_GEO = new THREE.CylinderGeometry(1, 1, 1, 10);
 export const STEM_GEO = new THREE.CylinderGeometry(0.012, 0.018, 1, 5);
 export const FOOT_GEO = new THREE.CylinderGeometry(0.04, 0.045, 0.02, 8);
@@ -26,6 +27,7 @@ export type Vec3 = [number, number, number];
 export interface XForm {
   position: Vec3;
   scale: Vec3;
+  rot?: Vec3; // optional per-instance euler (organic variation)
 }
 export interface LeafXForm {
   position: Vec3;
@@ -33,51 +35,61 @@ export interface LeafXForm {
   color: number;
   phaseX: number;
   phaseZ: number;
-  yaw: number; // outward aim around Y
-  tilt: number; // outward/upward tilt
+  yaw: number;
+  tilt: number;
 }
 
 interface RackDef {
   name: string;
   x: number;
   z: number;
-  w: number;
-  d: number;
-  axis: "x" | "z";
-  plantCount: number;
-  lightWidth: number;
+  w: number; // extent along X
+  d: number; // extent along Z
+  axis: "x" | "z"; // long axis
+  plantCount: number; // crops along the long axis
+  lightWidth: number; // LED bar length along the long axis
   lightY: number;
 }
 
-// Three racks, widely spaced. rackA (front-center) carries the hero plant.
-export const RACKS: RackDef[] = [
-  { name: "rackA", x: 0.4, z: 0.9, w: 2.2, d: 0.8, axis: "x", plantCount: 4, lightWidth: 1.9, lightY: 1.95 },
-  { name: "rackB", x: -0.6, z: -1.7, w: 2.8, d: 0.85, axis: "x", plantCount: 5, lightWidth: 2.5, lightY: 2.0 },
-  { name: "rackC", x: -2.7, z: -0.1, w: 0.8, d: 1.7, axis: "z", plantCount: 4, lightWidth: 0.6, lightY: 1.9 },
-];
+// Three identical benches in a strict parallel array, running along Z (depth),
+// evenly spaced across X with clean service aisles between them. The back strip
+// (toward the back wall) stays clear for the door / controller / reservoir.
+const RACK_XS = [-2.05, -0.35, 1.35];
+export const RACKS: RackDef[] = RACK_XS.map((x, i) => ({
+  name: `rack${i + 1}`,
+  x,
+  z: 0.2,
+  w: 0.74,
+  d: 4.0,
+  axis: "z",
+  plantCount: 6,
+  lightWidth: 3.7,
+  lightY: 1.98,
+}));
 
 export interface GrowLightDef {
   x: number;
   y: number;
   z: number;
-  width: number;
 }
-export const GROW_LIGHTS: GrowLightDef[] = RACKS.map((r) => ({
-  x: r.x,
-  y: r.lightY,
-  z: r.z,
-  width: r.lightWidth,
-}));
+// Each bench is lit by a row of LED segments — discrete downward cones, not one
+// flood. Three segments per bench keep the cone coverage even along its length.
+const SEG_OFFSETS = [-1.25, 0, 1.25];
+export const GROW_LIGHTS: GrowLightDef[] = RACKS.flatMap((r) =>
+  SEG_OFFSETS.map((o) => ({ x: r.x, y: r.lightY, z: r.z + o })),
+);
 
-const LEAF_TINTS = [0x6f9c3e, 0x567f2c, 0x9cc24f];
+// natural, slightly desaturated foliage greens (deep core → fresh tips)
+const LEAF_TINTS = [0x47702c, 0x375a22, 0x5f8a36, 0x789f44];
 
 export interface InstanceData {
-  rackBars: XForm[]; // rackMat boxes: legs, top rails, light arms
-  trayParts: XForm[]; // trayMaterial boxes: tray bottom + walls
+  rackBars: XForm[];
+  trayParts: XForm[];
+  channels: XForm[]; // integrated drainage channels under each tray
   lightBars: XForm[];
   lightGlows: XForm[];
   feet: XForm[];
-  tubes: XForm[]; // irrigation tubing + cable conduit (tubingMat boxes)
+  tubes: XForm[];
   pots: XForm[];
   soil: XForm[];
   stems: XForm[];
@@ -90,6 +102,7 @@ export function buildInstanceData(): InstanceData {
   const data: InstanceData = {
     rackBars: [],
     trayParts: [],
+    channels: [],
     lightBars: [],
     lightGlows: [],
     feet: [],
@@ -102,21 +115,38 @@ export function buildInstanceData(): InstanceData {
 
   for (const rack of RACKS) {
     const { x, z, w, d } = rack;
-    const legXs = [-w / 2 + 0.04, w / 2 - 0.04];
-    const legZs = [-d / 2 + 0.04, d / 2 - 0.04];
+    const isZ = rack.axis === "z";
+    const legXs = [-w / 2 + 0.05, w / 2 - 0.05];
+    const legZs = [-d / 2 + 0.05, d / 2 - 0.05];
 
-    // legs + feet
+    // legs + levelling feet at the four corners
     for (const lx of legXs) {
       for (const lz of legZs) {
-        data.rackBars.push({ position: [x + lx, TABLE_H / 2 + 0.12, z + lz], scale: [0.05, TABLE_H, 0.05] });
+        data.rackBars.push({ position: [x + lx, TABLE_H / 2 + 0.12, z + lz], scale: [0.055, TABLE_H, 0.055] });
         data.feet.push({ position: [x + lx, 0.12 + 0.01, z + lz], scale: ones });
       }
     }
-    // top rails (2)
-    for (const zPos of legZs) {
-      data.rackBars.push({ position: [x, TOP_RAIL_Y, z + zPos], scale: [w - 0.08, 0.035, 0.035] });
+
+    // long support rails (top + lower stretcher) running along the bench axis
+    const railLen = isZ ? d - 0.1 : w - 0.1;
+    const lowY = 0.12 + 0.22;
+    const sideOffs = isZ ? legXs : legZs;
+    for (const off of sideOffs) {
+      const topPos: Vec3 = isZ ? [x + off, TOP_RAIL_Y, z] : [x, TOP_RAIL_Y, z + off];
+      const lowPos: Vec3 = isZ ? [x + off, lowY, z] : [x, lowY, z + off];
+      const railScale: Vec3 = isZ ? [0.04, 0.04, railLen] : [railLen, 0.04, 0.04];
+      const lowScale: Vec3 = isZ ? [0.03, 0.03, railLen] : [railLen, 0.03, 0.03];
+      data.rackBars.push({ position: topPos, scale: railScale });
+      data.rackBars.push({ position: lowPos, scale: lowScale });
     }
-    // tray bottom + 4 walls
+    // end cross-braces tying the two side frames together
+    for (const endo of isZ ? legZs : legXs) {
+      const braceScale: Vec3 = isZ ? [w - 0.1, 0.03, 0.03] : [0.03, 0.03, d - 0.1];
+      const bracePos: Vec3 = isZ ? [x, lowY, z + endo] : [x + endo, lowY, z];
+      data.rackBars.push({ position: bracePos, scale: braceScale });
+    }
+
+    // stainless plant tray (bottom + 4 low walls)
     data.trayParts.push({ position: [x, TOP_RAIL_Y + 0.008, z], scale: [w - 0.06, 0.014, d - 0.06] });
     for (const zw of [-d / 2 + 0.03 + TRAY_WALL_THICK / 2, d / 2 - 0.03 - TRAY_WALL_THICK / 2]) {
       data.trayParts.push({ position: [x, TOP_RAIL_Y + TRAY_H / 2, z + zw], scale: [w - 0.06, TRAY_H, TRAY_WALL_THICK] });
@@ -124,71 +154,82 @@ export function buildInstanceData(): InstanceData {
     for (const xw of [-w / 2 + 0.03 + TRAY_WALL_THICK / 2, w / 2 - 0.03 - TRAY_WALL_THICK / 2]) {
       data.trayParts.push({ position: [x + xw, TOP_RAIL_Y + TRAY_H / 2, z], scale: [TRAY_WALL_THICK, TRAY_H, d - 0.06] });
     }
-    // overhead light bar + glow strip + 2 arms
-    const barY = rack.lightY - 0.04;
-    data.lightBars.push({ position: [x, barY, z], scale: [rack.lightWidth, 0.03, 0.08] });
-    data.lightGlows.push({ position: [x, barY - 0.025, z], scale: [rack.lightWidth - 0.06, 0.008, 0.05] });
-    for (const ax of [-rack.lightWidth / 2 + 0.05, rack.lightWidth / 2 - 0.05]) {
-      data.rackBars.push({ position: [x + ax, (barY + TOP_RAIL_Y) / 2, z], scale: [0.022, barY - TOP_RAIL_Y, 0.022] });
-    }
-
-    // irrigation supply tube along the back of the tray + a cable conduit on a leg
-    const backZ = z - d / 2 + 0.06;
-    const tubeY = TOP_RAIL_Y + TRAY_H + 0.02;
-    data.tubes.push({ position: [x, tubeY, backZ], scale: [w - 0.12, 0.02, 0.02] });
-    data.tubes.push({
-      position: [x - w / 2 + 0.04, TABLE_H / 2 + 0.12, z - d / 2 + 0.01],
-      scale: [0.02, TABLE_H, 0.02],
+    // integrated drainage channel running the full length, centred under the tray
+    const chY = TOP_RAIL_Y - 0.03;
+    data.channels.push({
+      position: [x, chY, z],
+      scale: isZ ? [0.14, 0.05, d - 0.1] : [w - 0.1, 0.05, 0.14],
     });
 
-    // plants (single row, generously spaced; fuller, structured canopies)
-    for (let p = 0; p < rack.plantCount; p++) {
-      const potR = 0.06 + Math.random() * 0.02;
-      const potH = 0.085 + Math.random() * 0.03;
-      const plantSize = 0.115 + Math.random() * 0.05;
+    // suspended linear LED bar + emissive strip + two drop arms
+    const barY = rack.lightY - 0.04;
+    const barScale: Vec3 = isZ ? [0.09, 0.04, rack.lightWidth] : [rack.lightWidth, 0.04, 0.09];
+    const glowScale: Vec3 = isZ ? [0.05, 0.01, rack.lightWidth - 0.08] : [rack.lightWidth - 0.08, 0.01, 0.05];
+    data.lightBars.push({ position: [x, barY, z], scale: barScale });
+    data.lightGlows.push({ position: [x, barY - 0.03, z], scale: glowScale });
+    for (const ao of [-rack.lightWidth / 2 + 0.05, rack.lightWidth / 2 - 0.05]) {
+      const armPos: Vec3 = isZ ? [x, (barY + TOP_RAIL_Y) / 2, z + ao] : [x + ao, (barY + TOP_RAIL_Y) / 2, z];
+      data.rackBars.push({ position: armPos, scale: [0.022, barY - TOP_RAIL_Y, 0.022] });
+    }
 
-      let posX: number;
-      let posZ: number;
-      if (rack.axis === "x") {
-        const spread = w - 0.5;
-        posX = x + (-spread / 2 + p * (spread / Math.max(rack.plantCount - 1, 1)));
-        posZ = z;
-      } else {
-        const spread = d - 0.5;
-        posX = x;
-        posZ = z + (-spread / 2 + p * (spread / Math.max(rack.plantCount - 1, 1)));
-      }
-      const baseY = SURFACE_Y + potH;
+    // irrigation supply line along one side of the bench
+    const tubeY = TOP_RAIL_Y + TRAY_H + 0.02;
+    const supplyPos: Vec3 = isZ ? [x - w / 2 + 0.05, tubeY, z] : [x, tubeY, z - d / 2 + 0.05];
+    const supplyScale: Vec3 = isZ ? [0.02, 0.02, d - 0.14] : [w - 0.14, 0.02, 0.02];
+    data.tubes.push({ position: supplyPos, scale: supplyScale });
 
-      data.pots.push({ position: [posX, SURFACE_Y + potH / 2, posZ], scale: [potR, potH, potR] });
-      data.soil.push({ position: [posX, SURFACE_Y + potH - 0.02, posZ], scale: [potR * 0.9, 0.02, potR * 0.9] });
-      data.stems.push({ position: [posX, baseY + plantSize * 0.45, posZ], scale: [1, plantSize * 0.95, 1] });
+    // ---- crops: strict uniform grid (rows × cols) embedded in the tray ----
+    const along = isZ ? d : w;
+    const across = isZ ? w : d;
+    const cols = rack.plantCount;
+    const rows = across > 0.7 ? 2 : 1;
+    const spreadAlong = along - 0.45;
+    const spreadAcross = Math.min(across - 0.34, 0.46);
+    for (let ci = 0; ci < cols; ci++) {
+      for (let ri = 0; ri < rows; ri++) {
+        const potR = 0.066;
+        const potH = 0.1;
+        const plantSize = 0.125 + (ci % 2) * 0.012; // near-uniform, faint alternation
+        const cellIdx = ci * rows + ri;
 
-      // drip emitter / stake at the pot, fed from the supply tube
-      data.tubes.push({ position: [posX, (tubeY + baseY) / 2, backZ], scale: [0.011, tubeY - baseY, 0.011] });
-      data.tubes.push({ position: [posX + potR * 0.5, baseY + 0.05, posZ], scale: [0.009, 0.12, 0.009] });
+        const alongPos = -spreadAlong / 2 + ci * (spreadAlong / Math.max(cols - 1, 1));
+        const acrossPos = rows > 1 ? -spreadAcross / 2 + ri * (spreadAcross / (rows - 1)) : 0;
+        const posX = x + (isZ ? acrossPos : alongPos);
+        const posZ = z + (isZ ? alongPos : acrossPos);
+        const baseY = SURFACE_Y + potH;
 
-      // dense leafy canopy: phyllotaxis spiral, wider/fuller at the base
-      const tint = LEAF_TINTS[p % 3];
-      const tintAlt = LEAF_TINTS[(p + 1) % 3];
-      const leafCount = 28 + Math.floor(Math.random() * 14);
-      for (let i = 0; i < leafCount; i++) {
-        const tier = i / leafCount;
-        const ang = i * 2.399963; // golden angle
-        const radius = plantSize * (0.7 - tier * 0.4) * (0.7 + Math.random() * 0.5);
-        const lx = Math.cos(ang) * radius;
-        const lz = Math.sin(ang) * radius;
-        const ly = plantSize * (0.14 + tier * 0.9) + Math.random() * plantSize * 0.12;
-        const size = plantSize * (0.42 + (1 - tier) * 0.36) * (0.72 + Math.random() * 0.4);
-        data.leaves.push({
-          position: [posX + lx, baseY + ly, posZ + lz],
-          baseScale: size,
-          color: Math.random() < 0.3 ? tintAlt : tint,
-          phaseX: lx,
-          phaseZ: lz,
-          yaw: ang,
-          tilt: 0.35 + tier * 0.75,
-        });
+        data.pots.push({ position: [posX, SURFACE_Y + potH / 2, posZ], scale: [potR, potH, potR] });
+        data.soil.push({ position: [posX, SURFACE_Y + potH - 0.02, posZ], scale: [potR * 0.86, 0.02, potR * 0.86] });
+        data.stems.push({ position: [posX, baseY + plantSize * 0.45, posZ], scale: [1, plantSize * 0.95, 1] });
+
+        // short drip stake at each pot
+        data.tubes.push({ position: [posX + potR * 0.5, baseY + 0.05, posZ], scale: [0.008, 0.12, 0.008] });
+
+        // dense leafy canopy: phyllotaxis spiral, deep-green core → fresh tips
+        const tintDeep = LEAF_TINTS[cellIdx % 2];
+        const tintMid = LEAF_TINTS[2];
+        const tintTip = LEAF_TINTS[3];
+        const leafCount = 46;
+        for (let i = 0; i < leafCount; i++) {
+          const tier = i / leafCount;
+          const ang = i * 2.399963; // golden angle
+          const radius = plantSize * (0.82 - tier * 0.5) * (0.78 + ((i * 13) % 7) / 18);
+          const lx = Math.cos(ang) * radius;
+          const lz = Math.sin(ang) * radius;
+          const ly = plantSize * (0.1 + tier * 0.92) + ((i * 7) % 5) / 60;
+          const size = plantSize * (0.46 + (1 - tier) * 0.34) * (0.78 + ((i * 5) % 6) / 18);
+          const col = tier < 0.4 ? tintDeep : tier < 0.78 ? tintMid : tintTip;
+          const droop = tier < 0.45 ? -0.2 - (0.45 - tier) * 0.7 : 0.3 + tier * 0.85;
+          data.leaves.push({
+            position: [posX + lx, baseY + ly, posZ + lz],
+            baseScale: size,
+            color: i % 6 === 0 ? tintMid : col,
+            phaseX: lx,
+            phaseZ: lz,
+            yaw: ang,
+            tilt: droop,
+          });
+        }
       }
     }
   }
@@ -196,8 +237,8 @@ export function buildInstanceData(): InstanceData {
   return data;
 }
 
-// Physical anchor points for prop placement.
-export const AC_POS: Vec3 = [2.15, 2.0, -ROOM_D / 2 + 0.22];
-export const TANK_POS: Vec3 = [-2.8, 0.12, -2.0];
-export const CONTROLLER_POS: Vec3 = [0.0, 1.55, -ROOM_D / 2 + 0.14];
-export const VAPORIZER_POS: Vec3 = [1.5, 0.12, 1.55];
+// Physical anchor points for prop placement (back wall = -Z, left wall = -X).
+export const AC_POS: Vec3 = [2.2, 2.0, -ROOM_D / 2 + 0.22];
+export const TANK_POS: Vec3 = [-3.0, 0.12, -2.15];
+export const CONTROLLER_POS: Vec3 = [-1.45, 1.5, -ROOM_D / 2 + 0.14];
+export const VAPORIZER_POS: Vec3 = [2.6, 0.12, 1.5];
