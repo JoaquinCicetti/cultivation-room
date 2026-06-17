@@ -10,6 +10,7 @@ import {
   TRACE_EVENTS,
   YIELD_SERIES,
 } from "../scroll/story";
+import { useTr } from "../i18n/runtime";
 import { Qr } from "./Qr";
 import { MetricChart } from "./MetricChart";
 
@@ -18,153 +19,161 @@ import { MetricChart } from "./MetricChart";
 // whole time and rotates/flies with it. Fixed pixel size (see .tab3d in CSS); the
 // inner .tablet-scroll is translated by StoryDirector for the internal scroll.
 export function TraceReport() {
+  const { t } = useTr();
+  const humUnit = t("card.unit.hum");
+  const state = t("trace.state");
+
   return (
     <div className="tab3d" ref={regRef("traceShell")}>
       <div className="tablet-bar">
         <span className="tb-brand">Growcast</span>
-        <span className="tb-lot">Lote {BATCH.id}</span>
-        <span className="tb-state">● {BATCH.state}</span>
+        <span className="tb-lot">
+          {t("trace.batchWord")} {BATCH.id}
+        </span>
+        <span className="tb-state">● {state}</span>
       </div>
       <div className="tablet-screen" ref={regRef("tabletScreen")}>
         <div className="tablet-scroll" ref={regRef("tabletContent")}>
           {/* HERO — lot identification + dominant QR */}
           <div className="tab-hero">
             <div className="tab-lot">
-              <span className="cap">Lote de producción</span>
+              <span className="cap">{t("trace.hero.cap")}</span>
               <h3>{BATCH.id}</h3>
               <dl className="lot-grid">
                 <div>
-                  <dt>Variedad</dt>
+                  <dt>{t("trace.field.variety")}</dt>
                   <dd>{BATCH.cultivar}</dd>
                 </div>
                 <div>
-                  <dt>Inicio</dt>
-                  <dd>{BATCH.start}</dd>
+                  <dt>{t("trace.field.start")}</dt>
+                  <dd>{t("trace.batch.start")}</dd>
                 </div>
                 <div>
-                  <dt>Zona</dt>
-                  <dd>{BATCH.zone}</dd>
+                  <dt>{t("trace.field.zone")}</dt>
+                  <dd>{t("trace.batch.zone")}</dd>
                 </div>
                 <div>
-                  <dt>Estado</dt>
+                  <dt>{t("trace.field.state")}</dt>
                   <dd>
-                    <span className="pill">{BATCH.state}</span>
+                    <span className="pill">{state}</span>
                   </dd>
                 </div>
               </dl>
             </div>
             <div className="tab-qr">
               <Qr size={150} />
-              <span className="cap">Identificador</span>
+              <span className="cap">{t("trace.identifier")}</span>
             </div>
           </div>
 
-          <Section label="A" title="Información del lote">
+          <Section label="A" title={t("trace.section.a")}>
             <div className="card tab-card">
               <dl className="kv">
                 <div>
-                  <dt>Lote</dt>
+                  <dt>{t("trace.field.batch")}</dt>
                   <dd>{BATCH.id}</dd>
                 </div>
                 <div>
-                  <dt>Cultivar</dt>
+                  <dt>{t("trace.field.cultivar")}</dt>
                   <dd>{BATCH.cultivar}</dd>
                 </div>
                 <div>
-                  <dt>Zona de cultivo</dt>
-                  <dd>{BATCH.zone}</dd>
+                  <dt>{t("trace.field.growZone")}</dt>
+                  <dd>{t("trace.batch.zone")}</dd>
                 </div>
                 <div>
-                  <dt>Fecha de inicio</dt>
-                  <dd>{BATCH.start}</dd>
+                  <dt>{t("trace.field.startDate")}</dt>
+                  <dd>{t("trace.batch.start")}</dd>
                 </div>
                 <div>
-                  <dt>Fecha de cosecha</dt>
-                  <dd>{BATCH.harvest}</dd>
+                  <dt>{t("trace.field.harvestDate")}</dt>
+                  <dd>{t("trace.batch.harvest")}</dd>
                 </div>
                 <div>
-                  <dt>Operario</dt>
+                  <dt>{t("trace.field.operator")}</dt>
                   <dd>{BATCH.operator}</dd>
                 </div>
               </dl>
             </div>
           </Section>
 
-          <Section label="B" title="Historial ambiental">
+          <Section label="B" title={t("trace.section.b")}>
             <div className="tab-grid2">
               {ENV_SUMMARY.map((e) => (
-                <div className="card tab-card" key={e.label}>
+                <div className="card tab-card" key={e.id}>
                   <div className="tab-cap-row">
-                    <span className="cap">{e.label}</span>
-                    <span className="tab-val">{e.value}</span>
+                    <span className="cap">{t(`trace.env.${e.id}`)}</span>
+                    <span className="tab-val">{e.value.replace("%HR", humUnit)}</span>
                   </div>
                   <MetricChart data={e.series} color={e.color} height={56} />
-                  <div className="tab-range">Rango objetivo · {e.range}</div>
+                  <div className="tab-range">
+                    {t("trace.targetRange")} · {e.range}
+                  </div>
                 </div>
               ))}
             </div>
           </Section>
 
-          <Section label="C" title="Eventos">
+          <Section label="C" title={t("trace.section.c")}>
             <div className="card tab-card log">
               {TRACE_EVENTS.map((ev, i) => (
                 <div className={`log-row log-${ev.kind}`} key={i}>
                   <span className="log-time">{ev.t}</span>
                   <span className="log-dot" />
-                  <span className="log-text">{ev.text}</span>
+                  <span className="log-text">{t(`trace.event.${ev.key}`)}</span>
                 </div>
               ))}
             </div>
           </Section>
 
-          <Section label="D" title="Consumos">
+          <Section label="D" title={t("trace.section.d")}>
             <div className="tab-grid2">
               <div className="card tab-card">
-                <span className="cap">Consumo acumulado</span>
+                <span className="cap">{t("trace.cumulative")}</span>
                 <div className="bars">
                   {CONSUMPTION.map((c) => (
-                    <div key={c.label} className="bar-row">
-                      <span className="bar-label">{c.label}</span>
+                    <div key={c.key} className="bar-row">
+                      <span className="bar-label">{t(`trace.cons.${c.key}.label`)}</span>
                       <span className="bar">
                         <i style={{ width: `${Math.round(c.pct * 100)}%` }} />
                       </span>
-                      <strong className="bar-value">{c.value}</strong>
+                      <strong className="bar-value">{t(`trace.cons.${c.key}.value`)}</strong>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="card tab-card">
-                <span className="cap">Rendimiento por ciclo</span>
+                <span className="cap">{t("trace.yieldPerCycle")}</span>
                 <MetricChart data={YIELD_SERIES} color="#c8e06a" height={72} />
               </div>
             </div>
           </Section>
 
-          <Section label="E" title="Cumplimiento y auditoría">
+          <Section label="E" title={t("trace.section.e")}>
             <div className="tab-grid2">
               {COMPLIANCE.map((c) => (
-                <div className="card tab-card audit" key={c.label}>
-                  <span className="cap">{c.label}</span>
-                  <strong className="audit-val">{c.value}</strong>
-                  <span className="audit-note">{c.note}</span>
+                <div className="card tab-card audit" key={c.key}>
+                  <span className="cap">{t(`trace.comp.${c.key}.label`)}</span>
+                  <strong className="audit-val">{c.value ?? t("trace.comp.calibration.value")}</strong>
+                  <span className="audit-note">{t(`trace.comp.${c.key}.note`)}</span>
                 </div>
               ))}
             </div>
           </Section>
 
-          <Section label="F" title="Resumen de producción">
+          <Section label="F" title={t("trace.section.f")}>
             <div className="card tab-card summary">
               {PRODUCTION.map((m) => (
-                <div className="sum" key={m.label}>
+                <div className="sum" key={m.key}>
                   <strong>{m.value}</strong>
-                  <span>{m.label}</span>
+                  <span>{t(`trace.prod.${m.key}`)}</span>
                 </div>
               ))}
             </div>
           </Section>
 
           <div className="tab-foot">
-            Registro verificable · Growcast · {BATCH.id}
+            {t("trace.verifiable")} · Growcast · {BATCH.id}
           </div>
         </div>
       </div>

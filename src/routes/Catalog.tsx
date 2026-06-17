@@ -1,22 +1,23 @@
 import { Link } from "react-router-dom";
+import { useIntl } from "react-intl";
 
 import { ContactButton } from "../components/contact/ContactButton";
+import { SiteFooter } from "../components/SiteFooter";
 import { ProductItem } from "./catalog/ProductItem";
 import { groups } from "./catalog/products";
 
-// Product catalog — stacked, full-width sections (one per product group), all
-// dark to match the room theme. Data lives in ./catalog/products.
+// Product catalog — shares the same page shell (.info-page / .info-head) as the
+// FAQ and Testimonials routes, then stacks one section per product group.
 export default function Catalog() {
+  const intl = useIntl();
   return (
-    <main className="catalog">
-      <header className="catalog-head">
-        <Link to="/" className="catalog-back">
-          ← Growcast
+    <main className="info-page info-page--wide">
+      <header className="info-head">
+        <Link to="/" className="page-back">
+          {intl.formatMessage({ id: "backToHome" })}
         </Link>
-        <h1 className="catalog-title">Catálogo</h1>
-        <p className="catalog-lead">
-          Monitoreo, control y trazabilidad para cada escala de cultivo.
-        </p>
+        <h1 className="info-title">{intl.formatMessage({ id: "catalog.title" })}</h1>
+        <p className="info-lead">{intl.formatMessage({ id: "catalog.lead" })}</p>
       </header>
 
       {groups.map((group) => (
@@ -29,12 +30,12 @@ export default function Catalog() {
       ))}
 
       <section className="catalog-contact">
-        <h2 className="catalog-contact-title">¿Hablamos?</h2>
-        <p className="catalog-contact-lead">
-          Contanos sobre tu instalación y te recomendamos la solución justa.
-        </p>
-        <ContactButton label="Empezá ahora" />
+        <h2 className="catalog-contact-title">{intl.formatMessage({ id: "catalog.contact.title" })}</h2>
+        <p className="catalog-contact-lead">{intl.formatMessage({ id: "catalog.contact.lead" })}</p>
+        <ContactButton label={intl.formatMessage({ id: "cta.startNow" })} />
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

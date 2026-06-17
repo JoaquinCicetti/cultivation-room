@@ -1,10 +1,12 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 
+import { useTr } from "../i18n/runtime";
+
 import * as mat from "./materials";
-import { AC_POS, CONTROLLER_POS, RACKS, ROOM_D, ROOM_W, TANK_POS, VAPORIZER_POS, WALL_THICK, type Vec3 } from "./sceneData";
+import { AC_POS, CONTROLLER_BODY, CONTROLLER_POS, CONTROLLER_SCREEN, RACKS, ROOM_D, ROOM_W, TANK_POS, VAPORIZER_POS, WALL_THICK, type Vec3 } from "./sceneData";
 import { devices, METRICS, story } from "../scroll/story";
 
 // --- Vaporizer / humidifier with a rising mist plume ------------------------
@@ -546,11 +548,28 @@ function controlState(): 0 | 1 | 2 {
 }
 
 export function Controller() {
+  const { locale, t } = useTr();
+  // state-indexed display labels: 0 stable · 1 alert · 2 active control
+  const labels = [t("controller.stable"), t("controller.alert"), t("controller.active")];
+  const labelsRef = useRef(labels);
+  labelsRef.current = labels;
+
+  const grpRef = useRef<THREE.Group>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const texRef = useRef<THREE.CanvasTexture | null>(null);
   const alarmRef = useRef<THREE.MeshStandardMaterial>(null);
   const lastState = useRef<number>(-1);
+  // own clones of the device materials so toggling depthTest while it flies (see
+  // useFrame) doesn't affect the other props sharing these materials.
+  const bodyMat = useMemo(() => mat.panelMat.clone(), []);
+  const bezelMat = useMemo(() => mat.panelDarkMat.clone(), []);
+  const glassMat = useMemo(() => mat.screenGlassMat.clone(), []);
+
+  // redraw the canvas texture when the language changes (even while idle)
+  useEffect(() => {
+    lastState.current = -1;
+  }, [locale]);
 
   const screenTexture = useMemo(() => {
     const canvas = document.createElement("canvas");
@@ -568,7 +587,7 @@ export function Controller() {
     const ctx = ctxRef.current;
     if (!ctx) return;
     const accent = state === 1 ? "#F0654A" : state === 2 ? "#E8B34A" : "#C8E06A";
-    const label = state === 1 ? "ALERTA" : state === 2 ? "CONTROL ACTIVO" : "ESTABLE";
+    const label = labelsRef.current[state] ?? labelsRef.current[0];
     ctx.fillStyle = "#0a120a";
     ctx.fillRect(0, 0, 256, 160);
     ctx.fillStyle = "#9CB64F";
@@ -596,6 +615,18 @@ export function Controller() {
   };
 
   useFrame(() => {
+    // The wall tablet IS this controller — StoryDirector flies its whole group to
+    // the front during the traceability section (it is NOT hidden); the report DOM
+    // panel is projected from its live screen so it stays glued.
+    // While flying it travels from the back wall THROUGH the room, so render it ON
+    // TOP (depthTest off + high renderOrder) so it isn't occluded; at rest it is
+    // depth-tested normally (correctly occluded by the canopy).
+    const flying = story.p > 0.605 && story.p < 0.96;
+    bodyMat.depthTest = bezelMat.depthTest = glassMat.depthTest = !flying;
+    bodyMat.depthWrite = bezelMat.depthWrite = !flying;
+    const ro = flying ? 100 : 0;
+    if (grpRef.current) grpRef.current.traverse((o) => (o.renderOrder = ro));
+
     const state = controlState();
     // redraw only on state change or while the temperature is moving
     if (state !== lastState.current || story.alert > 0.02) {
@@ -609,37 +640,48 @@ export function Controller() {
     }
   });
 
+  // Portrait control tablet: a screen (upper area, sized to the report's aspect)
+  // + a button/LED strip in the bottom ~30%. SY = screen centre offset.
+  const SY = CONTROLLER_SCREEN.y;
+  const BY = -0.21; // button/LED strip centre (below the screen)
   return (
-    <group position={CONTROLLER_POS}>
-      <mesh material={mat.panelMat} castShadow>
-        <boxGeometry args={[0.58, 0.42, 0.06]} />
+    <group ref={grpRef} name="controller" position={CONTROLLER_POS}>
+      {/* portrait device body */}
+      <mesh material={bodyMat} castShadow>
+        <boxGeometry args={[CONTROLLER_BODY.w, CONTROLLER_BODY.h, CONTROLLER_BODY.d]} />
       </mesh>
-      <mesh position={[0, 0, 0.031]} material={mat.panelDarkMat}>
-        <boxGeometry args={[0.54, 0.38, 0.012]} />
+      {/* screen recess (dark bezel) — the traceability report is rendered as this
+          surface (a DOM overlay; see StoryDirector/Overlay), matched to its size */}
+      <mesh position={[0, SY, 0.031]} material={bezelMat}>
+        <boxGeometry args={[CONTROLLER_SCREEN.w + 0.02, CONTROLLER_SCREEN.h + 0.02, 0.012]} />
       </mesh>
-      <mesh position={[0, 0.03, 0.04]}>
-        <planeGeometry args={[0.42, 0.26]} />
+      {/* hidden live-readout canvas (texture kept; the report is the surface) */}
+      <mesh position={[0, SY, CONTROLLER_SCREEN.z]} visible={false}>
+        <planeGeometry args={[CONTROLLER_SCREEN.w, CONTROLLER_SCREEN.h]} />
         <meshBasicMaterial map={screenTexture} toneMapped={false} transparent />
       </mesh>
       {/* glossy protective glass over the display (sharp reflections) */}
-      <mesh position={[0, 0.01, 0.046]} material={mat.screenGlassMat}>
-        <boxGeometry args={[0.5, 0.34, 0.006]} />
+      <mesh position={[0, SY, 0.046]} material={glassMat}>
+        <boxGeometry args={[CONTROLLER_SCREEN.w + 0.035, CONTROLLER_SCREEN.h + 0.035, 0.006]} />
       </mesh>
-      {/* steady alarm indicator (green → red with the alert, never flashing) */}
-      <mesh position={[-0.2, -0.15, 0.045]}>
-        <sphereGeometry args={[0.011, 10, 10]} />
-        <meshStandardMaterial ref={alarmRef} color={0x7bd44a} emissive={0x5fbf30} emissiveIntensity={0.4} roughness={0.3} />
-      </mesh>
-      {[-0.16, -0.12].map((x, i) => (
-        <mesh key={i} position={[x, -0.15, 0.04]} material={mat.ledGreenMat}>
-          <sphereGeometry args={[0.007, 8, 8]} />
+      {/* bottom strip — alarm indicator + status LEDs + buttons. Hidden by
+          StoryDirector once the device grows/flies (giant buttons look odd). */}
+      <group name="ctrlStrip">
+        <mesh position={[-0.14, BY, 0.045]}>
+          <sphereGeometry args={[0.012, 10, 10]} />
+          <meshStandardMaterial ref={alarmRef} color={0x7bd44a} emissive={0x5fbf30} emissiveIntensity={0.4} roughness={0.3} />
         </mesh>
-      ))}
-      {[0, 1, 2].map((b) => (
-        <mesh key={b} position={[0.08 + b * 0.06, -0.15, 0.04]} rotation={[Math.PI / 2, 0, 0]} material={mat.buttonMat}>
-          <cylinderGeometry args={[0.014, 0.014, 0.012, 10]} />
-        </mesh>
-      ))}
+        {[-0.09, -0.055].map((x, i) => (
+          <mesh key={i} position={[x, BY, 0.04]} material={mat.ledGreenMat}>
+            <sphereGeometry args={[0.008, 8, 8]} />
+          </mesh>
+        ))}
+        {[0, 1, 2].map((b) => (
+          <mesh key={b} position={[0.02 + b * 0.06, BY, 0.04]} rotation={[Math.PI / 2, 0, 0]} material={mat.buttonMat}>
+            <cylinderGeometry args={[0.015, 0.015, 0.012, 12]} />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 }

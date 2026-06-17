@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useIntl } from "react-intl";
 
 import { devices, deviceSetAuto, deviceSetManual, deviceSetPower, story, type DeviceDef } from "../scroll/story";
 
@@ -67,6 +68,17 @@ function AutoIcon() {
 }
 
 export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: string }) {
+  const intl = useIntl();
+  const name = intl.formatMessage({ id: `card.device.${d.id}.name` });
+  const auto = intl.formatMessage({ id: `card.device.${d.id}.auto` });
+  const manualLabel = intl.formatMessage({ id: "card.manual" });
+  // refs let the rAF loop read the latest localized badge text without
+  // re-seeding the history buffer on every locale change.
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
+  const manualRef = useRef(manualLabel);
+  manualRef.current = manualLabel;
+
   const [sel, setSel] = useState(DEFAULT_H);
   const selRef = useRef(DEFAULT_H);
 
@@ -129,7 +141,7 @@ export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: str
         const modeStr = v.manual ? "manual" : "auto";
         if (card.dataset.mode !== modeStr) card.dataset.mode = modeStr;
       }
-      if (badgeRef.current) badgeRef.current.textContent = v.manual ? "Manual" : d.automation;
+      if (badgeRef.current) badgeRef.current.textContent = v.manual ? manualRef.current : autoRef.current;
 
       // digital state timeline (step chart): instant transitions, flat plateaus
       let line = "M 0 " + yOf(hist[0]).toFixed(1);
@@ -158,9 +170,9 @@ export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: str
     <div className={`mcard rtcard ${posClass}`} ref={cardRef} data-on="false" data-mode="auto">
       <div className="rt-head">
         <div className="rt-id">
-          <div className="rt-name">{d.name}</div>
+          <div className="rt-name">{name}</div>
         </div>
-        <div className="rt-seg" role="tablist" aria-label="Período">
+        <div className="rt-seg" role="tablist" aria-label={intl.formatMessage({ id: "card.period" })}>
           {PERIODS.map((p) => (
             <button
               key={p.h}
@@ -177,7 +189,12 @@ export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: str
       </div>
 
       <div className="rt-status">
-        <button type="button" className="rt-tile" onClick={togglePower} aria-label={`Encender o apagar ${d.name}`}>
+        <button
+          type="button"
+          className="rt-tile"
+          onClick={togglePower}
+          aria-label={intl.formatMessage({ id: "card.toggle" }, { name })}
+        >
           <span className="rt-tile-dot" />
           <PowerIcon />
         </button>
@@ -186,9 +203,14 @@ export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: str
             <span className="rt-pct" ref={pctRef}>
               0%
             </span>
-            <button type="button" className="rt-badge" onClick={toggleMode} aria-label="Automatización">
+            <button
+              type="button"
+              className="rt-badge"
+              onClick={toggleMode}
+              aria-label={intl.formatMessage({ id: "card.automation" })}
+            >
               <AutoIcon />
-              <span ref={badgeRef}>{d.automation}</span>
+              <span ref={badgeRef}>{auto}</span>
             </button>
           </div>
           <div className="rt-bar">
@@ -199,13 +221,13 @@ export function DeviceRuntimeCard({ d, posClass }: { d: DeviceDef; posClass: str
 
       <div className="rt-summary">
         <div className="rt-metric rt-active">
-          <span className="rt-metric-label">ACTIVO</span>
+          <span className="rt-metric-label">{intl.formatMessage({ id: "card.active" })}</span>
           <span className="rt-metric-val" ref={actRef}>
             0H 0M
           </span>
         </div>
         <div className="rt-metric rt-inactive">
-          <span className="rt-metric-label">INACTIVO</span>
+          <span className="rt-metric-label">{intl.formatMessage({ id: "card.inactive" })}</span>
           <span className="rt-metric-val" ref={inaRef}>
             0H 0M
           </span>

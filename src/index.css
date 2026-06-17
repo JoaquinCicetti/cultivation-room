@@ -1071,18 +1071,29 @@ canvas {
     gap: 0.85rem;
     width: calc(100% - 2.7rem);
   }
-  /* footer stacks (WhatsApp over the route links) and centres, below the main
-     block — never overlapping the nav routes */
-  .final-footer {
-    flex-direction: column;
-    align-items: center;
+  /* landing footer centres + compacts, below the main block */
+  .site-footer--landing {
+    bottom: 1.4vh;
+    gap: 0.55rem;
     text-align: center;
-    gap: 0.6rem;
-    bottom: 1.6vh;
   }
-  .foot-links {
+  .site-footer--landing .sf-row,
+  .site-footer--landing .sf-links,
+  .site-footer--landing .sf-legal {
     justify-content: center;
-    gap: 0.5rem 1rem;
+    gap: 0.4rem 0.9rem;
+  }
+  .site-footer--landing .sf-meta {
+    padding-top: 0.55rem;
+  }
+  .site-footer--landing .wa-cta {
+    font-size: 0.8rem;
+    padding: 0.45rem 0.9rem;
+  }
+  .site-footer--landing .sf-links a,
+  .site-footer--landing .sf-legal a,
+  .site-footer--landing .foot-copy {
+    font-size: 0.74rem;
   }
 }
 
@@ -1276,9 +1287,23 @@ canvas {
   will-change: left, top, width, height, opacity;
 }
 /* fixed-size device shell for the 3D tablet (rendered on the mesh via Html) */
+/* 2D flying traceability report — positioned in screen px by StoryDirector from
+   the projected wall tablet (so it tracks it exactly), then translated + scaled +
+   rotated to the front. transform-origin 0 0 + the trailing translate(-410,-520)
+   in the JS transform pin the device's centre to the computed point. */
+.trace-fly {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 8;
+  transform-origin: 0 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
 .tab3d {
   box-sizing: border-box;
-  width: 820px;
+  width: 960px;
   height: 1040px;
   display: flex;
   flex-direction: column;
@@ -1680,20 +1705,6 @@ canvas {
 .final-nav a:hover {
   color: var(--lime);
 }
-.final-footer {
-  position: absolute;
-  left: clamp(1.5rem, 6vw, 6rem);
-  right: clamp(1.5rem, 6vw, 6rem);
-  bottom: clamp(1.5rem, 4vh, 3rem);
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--line);
-}
 .wa-cta {
   display: inline-flex;
   align-items: center;
@@ -1705,6 +1716,7 @@ canvas {
   font-weight: 600;
   font-size: 0.9rem;
   transition: background 0.15s ease;
+  flex: none;
 }
 .wa-cta:hover {
   background: rgba(200, 224, 106, 0.08);
@@ -1716,23 +1728,9 @@ canvas {
   background: var(--lime);
   box-shadow: 0 0 9px rgba(200, 224, 106, 0.6);
 }
-.foot-links {
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
-  flex-wrap: wrap;
-}
-.foot-links a {
-  font-size: 0.82rem;
-  color: var(--muted);
-  transition: color 0.15s ease;
-}
-.foot-links a:hover {
-  color: var(--ink);
-}
 .foot-copy {
-  font-size: 0.82rem;
-  color: rgba(238, 242, 226, 0.35);
+  font-size: 0.8rem;
+  color: rgba(238, 242, 226, 0.4);
 }
 
 /* ---- placeholder pages ------------------------------------------------ */
@@ -1852,8 +1850,10 @@ canvas {
   font-size: clamp(1rem, 1.6vw, 1.2rem);
 }
 
+/* catalog now lives inside the shared .info-page shell, which already supplies
+   the horizontal padding + max width — groups only add vertical rhythm */
 .catalog-group {
-  padding: clamp(2.5rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4.5rem) 0;
+  padding: clamp(2.5rem, 6vw, 5rem) 0 0;
 }
 .catalog-group-title {
   margin: 0 0 0.4rem;
@@ -1980,9 +1980,8 @@ canvas {
 }
 
 .catalog-contact {
-  max-width: 64rem;
-  margin: clamp(2.5rem, 6vw, 5rem) auto 0;
-  padding: clamp(2.5rem, 6vw, 4rem) clamp(1.5rem, 5vw, 4.5rem);
+  margin: clamp(2.5rem, 6vw, 5rem) 0 0;
+  padding: clamp(2.5rem, 6vw, 4rem) 0;
   text-align: center;
 }
 .catalog-contact-title {
@@ -2150,4 +2149,294 @@ canvas {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* visually-hidden label text (kept for screen readers) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- language switcher — a tiny native <select> --------------------- */
+.lang-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.lang-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  background: rgba(16, 22, 13, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.32rem 1.5rem 0.32rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.lang-select select:hover {
+  border-color: rgba(200, 224, 106, 0.45);
+}
+.lang-select select:focus-visible {
+  outline: none;
+  border-color: var(--lime);
+}
+.lang-select option {
+  color: #15200a;
+  background: #e9eed8;
+}
+/* caret */
+.lang-caret {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* ---- shared site footer (every route + landing ending) -------------- */
+.site-footer {
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.sf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.4rem;
+  flex-wrap: wrap;
+}
+.sf-links {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem 1.3rem;
+  flex-wrap: wrap;
+}
+.sf-links a {
+  font-size: 0.86rem;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+.sf-links a:hover {
+  color: var(--ink);
+}
+.sf-links .sf-app {
+  color: var(--lime);
+  font-weight: 600;
+}
+.sf-links .sf-app:hover {
+  color: var(--lime-ink);
+}
+.sf-meta {
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+}
+.sf-legal {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+  flex-wrap: wrap;
+}
+.sf-legal a {
+  font-size: 0.8rem;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+.sf-legal a:hover {
+  color: var(--ink);
+}
+
+/* landing ending variant — overlaid on the 3D scene, pinned near the bottom */
+.site-footer--landing {
+  position: absolute;
+  left: clamp(1.5rem, 6vw, 6rem);
+  right: clamp(1.5rem, 6vw, 6rem);
+  bottom: clamp(1.5rem, 4vh, 2.4rem);
+  margin-top: 0;
+  pointer-events: auto;
+}
+
+/* ---- info pages (FAQ · Testimonials · Catalog · Legal) shared shell -- */
+.info-page {
+  position: relative;
+  min-height: 100%;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 7vh, 5rem) clamp(1.5rem, 6vw, 4rem) clamp(3rem, 8vh, 6rem);
+}
+.info-page--wide {
+  max-width: 72rem;
+}
+.info-head {
+  margin-bottom: clamp(2rem, 5vw, 3.2rem);
+}
+.info-title {
+  margin: 1.6rem 0 0.5rem;
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+.info-lead {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.5;
+}
+
+/* ---- FAQ accordion --------------------------------------------------- */
+.faq-sections {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2.2rem, 5vw, 3.4rem);
+}
+.faq-section-title {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lime-ink);
+}
+.faq-list {
+  display: flex;
+  flex-direction: column;
+}
+.faq-item {
+  border-top: 1px solid var(--line);
+}
+.faq-section .faq-list .faq-item:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.faq-q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: 100%;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  font-size: clamp(1rem, 1.5vw, 1.12rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  padding: 1.15rem 0.2rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.faq-q:hover {
+  color: var(--lime);
+}
+.faq-chevron {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid var(--lime-ink);
+  border-bottom: 2px solid var(--lime-ink);
+  transform: rotate(45deg);
+  transition: transform 0.25s ease;
+}
+.faq-item.is-open .faq-chevron {
+  transform: rotate(-135deg);
+}
+.faq-a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+.faq-item.is-open .faq-a {
+  grid-template-rows: 1fr;
+}
+.faq-a > p {
+  overflow: hidden;
+  min-height: 0;
+  margin: 0;
+  max-width: 64ch;
+  color: rgba(238, 242, 226, 0.74);
+  font-size: clamp(0.92rem, 1.3vw, 1rem);
+  line-height: 1.6;
+}
+.faq-item.is-open .faq-a > p {
+  padding-bottom: 1.2rem;
+}
+
+/* ---- testimonials — static stacked list ------------------------------ */
+.tm-list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.5vw, 1.6rem);
+}
+.tm-quote {
+  margin: 0;
+  padding: clamp(1.6rem, 3.5vw, 2.6rem);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.tm-mark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3.4rem;
+  line-height: 0.5;
+  color: var(--lime);
+  opacity: 0.8;
+}
+.tm-quote blockquote {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.tm-quote figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.tm-quote figcaption strong {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.tm-quote figcaption span {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-a {
+    transition: none;
+  }
 }

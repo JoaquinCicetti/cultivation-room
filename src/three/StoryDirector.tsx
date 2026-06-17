@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 
-import { GROW_LIGHTS } from "./sceneData";
+import { CONTROLLER_POS, CONTROLLER_SCREEN, GROW_LIGHTS } from "./sceneData";
 import { lightGlowMat } from "./materials";
 import {
   clamp01,
@@ -17,6 +17,7 @@ import {
   sensorScreen,
   smooth,
   story,
+  traceScreen,
   ui,
   updateStory,
 } from "../scroll/story";
@@ -31,6 +32,22 @@ const MOBILE_BP = 768;
 // fit the ~9-unit-wide room across a narrow viewport (no side-wall clipping)
 const mobileZoom = (w: number) => Math.max(30, Math.min(72, w / 9.5));
 const projVec = new THREE.Vector3();
+
+// --- traceability tablet fly: temps + the report DOM's pixel size (= .tab3d) ---
+const REPORT_W = 960;
+const REPORT_H = 1040;
+const REST_SCREEN = new THREE.Vector3(
+  CONTROLLER_POS[0],
+  CONTROLLER_POS[1] + CONTROLLER_SCREEN.y,
+  CONTROLLER_POS[2] + CONTROLLER_SCREEN.z,
+);
+const flyFront = new THREE.Vector3();
+const flyDet = new THREE.Vector3();
+const flyScreen = new THREE.Vector3();
+const flyOff = new THREE.Vector3();
+const flyQ = new THREE.Quaternion();
+const camQ = new THREE.Quaternion();
+const pPoint = new THREE.Vector3();
 
 // Neutral, desaturated ambient so walls/machinery stay crisp gray. The alarm
 // only nudges the environment a hair — the real red signalling rides the
@@ -78,6 +95,7 @@ function setEl(key: string, opacity: number, ty = 0, scale = 1) {
 export function StoryDirector() {
   const { scene, camera, size } = useThree();
   const roomRef = useRef<THREE.Object3D | null>(null);
+  const ctrlRef = useRef<THREE.Object3D | null>(null);
   const startRef = useRef<number | null>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const hemiRef = useRef<THREE.HemisphereLight>(null);
@@ -210,7 +228,8 @@ export function StoryDirector() {
     setEl("scrollHint", story.scrollHint);
     setEl("scrim", story.scrim);
 
-    // --- DOM: traceability — static left title (the report is the 3D tablet) ---
+    // --- DOM: traceability — static left title (the flying report is driven
+    // below, after the camera projection, so it tracks the wall tablet) ---
     const traceOut = 1 - smooth(seg(story.p, 0.94, 0.99));
     setEl("trace2Left", story.traceIn * traceOut, (1 - story.traceIn) * 18);
     // internal report scroll: only the content inside the tablet screen moves
@@ -220,8 +239,6 @@ export function StoryDirector() {
       const maxScroll = Math.max(0, content.scrollHeight - screenEl.clientHeight);
       content.style.transform = `translateY(${(-story.traceScroll * maxScroll).toFixed(1)}px)`;
     }
-    const shell = ui["traceShell"];
-    if (shell) shell.style.opacity = traceOut.toFixed(3); // fade the tablet out into the final
 
     // --- DOM: final ---
     setEl("final", story.finalP);
@@ -267,6 +284,65 @@ export function StoryDirector() {
       s.x = (projVec.x * 0.5 + 0.5) * size.width;
       s.y = (-projVec.y * 0.5 + 0.5) * size.height;
       s.vis = projVec.z < 1 ? 1 : 0;
+    }
+
+    // === Traceability: the 3D wall tablet FLIES to the front (it is NOT removed);
+    // the report (a 2D DOM panel) is projected from its LIVE screen each frame, so
+    // it stays glued to the device as it translates / rotates (wall→billboard) /
+    // grows. The tablet body provides the device + correct depth occlusion. ===
+    if (!ctrlRef.current) ctrlRef.current = scene.getObjectByName("controller") ?? null;
+    const ctrl = ctrlRef.current;
+    const fly = ui["traceFly"];
+    if (ctrl) {
+      const det = smooth(seg(story.p, 0.61, 0.67));
+      const tf = smooth(seg(story.p, 0.67, 0.77));
+      // front screen target (world; the room group is identity)
+      flyFront.set(mobile ? 0 : 0.26, mobile ? -0.78 : 0.02, -0.3).unproject(camera);
+      flyDet.copy(REST_SCREEN).lerp(flyFront, 0.18); // a short hop off the wall
+      flyScreen.copy(REST_SCREEN).lerp(flyDet, det).lerp(flyFront, tf);
+      flyQ.identity().slerp(camera.getWorldQuaternion(camQ), tf); // wall → billboard
+      const bigH = (0.86 * size.height) / (CONTROLLER_SCREEN.h * cam.zoom);
+      const bigW = (0.92 * size.width) / (CONTROLLER_SCREEN.w * cam.zoom);
+      const big = THREE.MathUtils.lerp(1, Math.min(bigH, bigW), tf);
+      // place the BODY so the SCREEN centre lands on the target (the screen sits
+      // CONTROLLER_SCREEN.y above the body centre, rotated + scaled with the device)
+      flyOff.set(0, CONTROLLER_SCREEN.y, CONTROLLER_SCREEN.z).applyQuaternion(flyQ).multiplyScalar(big);
+      ctrl.position.copy(flyScreen).sub(flyOff);
+      ctrl.quaternion.copy(flyQ);
+      ctrl.scale.setScalar(big);
+      const strip = ctrl.getObjectByName("ctrlStrip");
+      if (strip) strip.visible = tf < 0.04; // hide buttons/LEDs once it grows
+      ctrl.updateMatrixWorld();
+
+      if (fly) {
+        if (story.p >= 0.96) {
+          if (fly.style.display !== "none") fly.style.display = "none";
+        } else {
+          if (fly.style.display === "none") fly.style.display = "";
+          // project the live screen centre + half-width + half-height points and map
+          // the REPORT_W×REPORT_H report onto them (a pure affine under the ortho cam)
+          ctrl.localToWorld(pPoint.set(0, CONTROLLER_SCREEN.y, CONTROLLER_SCREEN.z)).project(camera);
+          const s0x = (pPoint.x * 0.5 + 0.5) * size.width;
+          const s0y = (-pPoint.y * 0.5 + 0.5) * size.height;
+          traceScreen.x = s0x;
+          traceScreen.y = s0y;
+          ctrl.localToWorld(pPoint.set(CONTROLLER_SCREEN.w / 2, CONTROLLER_SCREEN.y, CONTROLLER_SCREEN.z)).project(camera);
+          const rxh = (pPoint.x * 0.5 + 0.5) * size.width - s0x;
+          const ryh = (-pPoint.y * 0.5 + 0.5) * size.height - s0y;
+          ctrl.localToWorld(pPoint.set(0, CONTROLLER_SCREEN.y + CONTROLLER_SCREEN.h / 2, CONTROLLER_SCREEN.z)).project(camera);
+          const uxh = (pPoint.x * 0.5 + 0.5) * size.width - s0x;
+          const uyh = (-pPoint.y * 0.5 + 0.5) * size.height - s0y;
+          // report local +x → screen right (full = 2·half); +y [down] → screen −up
+          const a = (rxh * 2) / REPORT_W;
+          const b = (ryh * 2) / REPORT_W;
+          const c = (-uxh * 2) / REPORT_H;
+          const d = (-uyh * 2) / REPORT_H;
+          const e = s0x - (a * (REPORT_W / 2) + c * (REPORT_H / 2));
+          const f = s0y - (b * (REPORT_W / 2) + d * (REPORT_H / 2));
+          fly.style.opacity = (rev * traceOut).toFixed(3); // fades in with the room reveal
+          fly.style.transform = `matrix(${a.toFixed(5)},${b.toFixed(5)},${c.toFixed(5)},${d.toFixed(5)},${e.toFixed(1)},${f.toFixed(1)})`;
+        }
+      }
     }
   });
 

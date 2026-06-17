@@ -96,6 +96,11 @@ export const DEVICES: DeviceDef[] = [
 ];
 export const deviceScreen = DEVICES.map(() => ({ x: 0, y: 0, vis: 0 }));
 
+// screen-space position (px) of the wall control tablet — the traceability report
+// flies in 2D FROM exactly here, projected with the same view-offset-aware camera
+// matrix as the cards (so it tracks the tablet; drei <Html transform> does not).
+export const traceScreen = { x: 0, y: 0, vis: 0 };
+
 // resolved device state, recomputed every frame from the timeline OR a user
 // override. `manual` flags an active override (automation paused for it).
 export interface DeviceView {
@@ -198,56 +203,60 @@ export const TRACE_METRICS = [
 export const YIELD_SERIES = [0.32, 0.42, 0.38, 0.55, 0.64, 0.6, 0.74, 0.82, 0.9];
 export const TEMP_SERIES = [0.45, 0.5, 0.62, 0.85, 0.7, 0.55, 0.48, 0.5, 0.46];
 
-// consumption of the main supplies
+// consumption of the main supplies (label + value localized via i18n trace.cons.*)
 export const CONSUMPTION = [
-  { label: "Agua", value: "1.240 L", pct: 0.74 },
-  { label: "Nutrientes", value: "86 L", pct: 0.46 },
-  { label: "Energía", value: "312 kWh", pct: 0.62 },
-];
+  { key: "water", pct: 0.74 },
+  { key: "nutrients", pct: 0.46 },
+  { key: "energy", pct: 0.62 },
+] as const;
 
 // ---- production-report content (the in-tablet traceability sections) -------
+// Stable, language-neutral fields stay here; state/zone/start/harvest are
+// localized via i18n (trace.state / trace.batch.*).
 export const BATCH = {
   id: "#A-2408",
   cultivar: "Lemon Haze",
-  zone: "Sala 2 · Rack B",
-  start: "12 Ago 2026",
-  harvest: "— en curso",
   operator: "M. Álvarez",
-  state: "Producción",
 };
 
 const HUM_SERIES = [0.55, 0.6, 0.58, 0.5, 0.46, 0.52, 0.6, 0.63, 0.62];
 const CO2_SERIES = [0.6, 0.64, 0.58, 0.55, 0.62, 0.7, 0.66, 0.6, 0.63];
 const VPD_SERIES = [0.5, 0.48, 0.54, 0.7, 0.62, 0.5, 0.46, 0.5, 0.52];
 
+// label localized via i18n (trace.env.<id>); the "%HR" token in the humidity
+// value is swapped for the localized unit (card.unit.hum) at render time.
 export const ENV_SUMMARY = [
-  { label: "Temperatura", value: "24.6 °C", range: "22–26 °C", series: TEMP_SERIES, color: "#a9d36a" },
-  { label: "Humedad", value: "64 %HR", range: "55–70 %", series: HUM_SERIES, color: "#8fb8cc" },
-  { label: "CO₂", value: "824 ppm", range: "700–1000 ppm", series: CO2_SERIES, color: "#c8e06a" },
-  { label: "VPD", value: "1.04 kPa", range: "0.8–1.2 kPa", series: VPD_SERIES, color: "#cf8fe0" },
+  { id: "temp", value: "24.6 °C", range: "22–26 °C", series: TEMP_SERIES, color: "#a9d36a" },
+  { id: "hum", value: "64 %HR", range: "55–70 %", series: HUM_SERIES, color: "#8fb8cc" },
+  { id: "co2", value: "824 ppm", range: "700–1000 ppm", series: CO2_SERIES, color: "#c8e06a" },
+  { id: "vpd", value: "1.04 kPa", range: "0.8–1.2 kPa", series: VPD_SERIES, color: "#cf8fe0" },
 ];
 
+// text localized via i18n (trace.event.<key>)
 export const TRACE_EVENTS = [
-  { t: "09:12", text: "Alarma de temperatura detectada", kind: "alarm" },
-  { t: "09:13", text: "Ventilación activada", kind: "action" },
-  { t: "09:15", text: "Humedad recuperada", kind: "ok" },
-  { t: "09:17", text: "Alarma resuelta", kind: "ok" },
-  { t: "11:40", text: "Riego automático ejecutado", kind: "action" },
-  { t: "14:05", text: "Dosificación de nutrientes A/B", kind: "action" },
+  { t: "09:12", key: "tempAlarm", kind: "alarm" },
+  { t: "09:13", key: "venting", kind: "action" },
+  { t: "09:15", key: "humRecovered", kind: "ok" },
+  { t: "09:17", key: "alarmResolved", kind: "ok" },
+  { t: "11:40", key: "irrigation", kind: "action" },
+  { t: "14:05", key: "dosing", kind: "action" },
 ] as const;
 
+// label + note localized via i18n (trace.comp.<key>.*); calibration's value is
+// a date, so it is localized too (value:null -> trace.comp.calibration.value).
 export const COMPLIANCE = [
-  { label: "Alarmas registradas", value: "3", note: "todas resueltas" },
-  { label: "Intervenciones manuales", value: "1", note: "M. Álvarez · 09:18" },
-  { label: "Acciones automáticas", value: "128", note: "clima · riego · dosificación" },
-  { label: "Calibración de sensores", value: "02 Ago 2026", note: "próxima: 02 Sep" },
+  { key: "alarms", value: "3" as string | null },
+  { key: "manual", value: "1" as string | null },
+  { key: "auto", value: "128" as string | null },
+  { key: "calibration", value: null as string | null },
 ];
 
+// value stays here; label localized via i18n (trace.prod.<key>)
 export const PRODUCTION = [
-  { value: "1.8 kg/m²", label: "Rendimiento estimado" },
-  { value: "94 %", label: "Eficiencia hídrica" },
-  { value: "98 / 100", label: "Estabilidad ambiental" },
-  { value: "A+", label: "Calidad de producción" },
+  { value: "1.8 kg/m²", key: "yield" },
+  { value: "94 %", key: "water" },
+  { value: "98 / 100", key: "stability" },
+  { value: "A+", key: "quality" },
 ];
 
 // ---- professional storytelling (left, over the scene) ----------------------
@@ -412,10 +421,10 @@ export function updateStory(p: number, dt = 0) {
   // followed by an internal report scroll inside the now-large tablet.
   story.traceP = seg(p, 0.6, 0.94);
   story.traceIn = smooth(seg(p, 0.62, 0.72));
-  // the report scrolls across a long window and reaches its end (incl. section F
-  // + footer) by 0.90, then HOLDS fully visible until 0.94, before the ending
-  // fade (0.94→0.99) takes over. Plenty of room to read to the bottom.
-  story.traceScroll = seg(p, 0.6, 0.9);
+  // internal report scroll stays LOCKED at the top until the report finishes
+  // flying to the front (the fly transform completes by p≈0.77); it then scrolls
+  // to its end (incl. section F + footer) by 0.92, before the ending fade.
+  story.traceScroll = seg(p, 0.78, 0.92);
   story.finalP = seg(p, 0.95, 1.0);
 
   // intro -> story

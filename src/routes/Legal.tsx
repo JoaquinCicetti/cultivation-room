@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
+import { useIntl } from "react-intl";
 
+import { SiteFooter } from "../components/SiteFooter";
 import { CommonTermsMessages, HtmlMessages } from "../legal/legalMessages";
 
 type Msg = { id: string; defaultMessage: string };
@@ -30,12 +32,13 @@ function resolve(text: string): { heading: string | null; body: string } {
 
 export default function Legal() {
   const { pathname } = useLocation();
+  const intl = useIntl();
   const title = TITLES[pathname] ?? "Términos y Condiciones";
 
   return (
     <main className="legal">
       <Link className="page-back" to="/">
-        ← Growcast
+        {intl.formatMessage({ id: "backToHome" })}
       </Link>
       <h1>{title}</h1>
       <p className="legal-company">GROWCAST by CANNFEEL S.A.</p>
@@ -50,6 +53,7 @@ export default function Legal() {
           );
         })}
       </div>
+      <SiteFooter />
     </main>
   );
 }

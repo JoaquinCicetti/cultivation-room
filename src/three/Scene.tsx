@@ -7,7 +7,6 @@ import { BlendFunction, ToneMappingMode } from "postprocessing";
 
 import { RoomScene } from "./RoomScene";
 import { StoryDirector } from "./StoryDirector";
-import { TraceTablet } from "./TraceTablet";
 
 const FLOOR_Y = 0.12; // facility floor is flush with the room floor (no step)
 
@@ -150,7 +149,6 @@ export default function Scene() {
         opacity={0.6}
         color="#000000"
       />
-      <TraceTablet />
 
       <EffectComposer multisampling={4} enableNormalPass>
         <SSAO

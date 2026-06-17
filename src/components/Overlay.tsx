@@ -1,16 +1,23 @@
 import { Link } from "react-router-dom";
+import { useIntl } from "react-intl";
 
-import { HEADLINES, INTRO, NOTIFICATIONS, regRef } from "../scroll/story";
+import { INTRO, NOTIFICATIONS, regRef } from "../scroll/story";
 import { ContactButton } from "./contact/ContactButton";
 import { LogoReveal } from "./LogoReveal";
 import { MetricCards } from "./MetricCards";
+import { SiteFooter } from "./SiteFooter";
 import { Traceability } from "./Traceability";
+import { TraceReport } from "./TraceReport";
 
-const WHATSAPP = "https://wa.me/5491100000000?text=Hola%20Growcast";
-const REGRET_FORM =
-  "https://docs.google.com/forms/d/e/1FAIpQLSecyGXGnPCrV0e5L7ULzq8oa2k89-BocTqWi8ngT0GlMtgqLQ/viewform";
+// hero supporting metrics — keys map to i18n ids (intro.meta.<key>.k / .v)
+const INTRO_META = ["continuous", "automatic", "traceable"];
+// four storytelling sections — indices map to i18n ids (hl.<i>.k/.h/.s/.lead)
+const HEADLINE_IX = [0, 1, 2, 3];
 
 export function Overlay() {
+  const intl = useIntl();
+  const t = (id: string) => intl.formatMessage({ id });
+
   return (
     <div className="overlay">
       {/* loading screen — covers until the 3D scene is ready, then fades to the
@@ -25,7 +32,7 @@ export function Overlay() {
         <div className="loader-bar">
           <span className="loader-bar-fill" />
         </div>
-        <span className="loader-status">Iniciando sistema de cultivo…</span>
+        <span className="loader-status">{t("loader.status")}</span>
       </div>
 
       {/* opening fade-from-dark */}
@@ -41,13 +48,13 @@ export function Overlay() {
       </Link>
       {/* hero supporting block (fades out as the scroll story begins) */}
       <div className="intro-hero" ref={regRef("introTag")}>
-        <span className="intro-eyebrow">{INTRO.eyebrow}</span>
-        <p className="intro-tag">{INTRO.tagline}</p>
+        <span className="intro-eyebrow">{t("intro.eyebrow")}</span>
+        <p className="intro-tag">{t("intro.tagline")}</p>
         <ul className="intro-meta">
-          {INTRO.meta.map((m) => (
-            <li key={m.k}>
-              <strong>{m.k}</strong>
-              <span>{m.v}</span>
+          {INTRO_META.map((m) => (
+            <li key={m}>
+              <strong>{t(`intro.meta.${m}.k`)}</strong>
+              <span>{t(`intro.meta.${m}.v`)}</span>
             </li>
           ))}
         </ul>
@@ -55,19 +62,19 @@ export function Overlay() {
 
       {/* LEFT — section storytelling */}
       <div className="text-col">
-        {HEADLINES.map((h, i) => (
+        {HEADLINE_IX.map((i) => (
           <div key={i} className="headline" ref={regRef(`hl${i}`)} style={{ opacity: 0 }}>
-            <span className="kicker">{h.k}</span>
-            <h1>{h.h}</h1>
-            <p className="sub">{h.s}</p>
-            <p className="lead">{h.lead}</p>
+            <span className="kicker">{t(`hl.${i}.k`)}</span>
+            <h1>{t(`hl.${i}.h`)}</h1>
+            <p className="sub">{t(`hl.${i}.s`)}</p>
+            <p className="lead">{t(`hl.${i}.lead`)}</p>
           </div>
         ))}
       </div>
 
       {/* scroll indicator */}
       <div className="scroll-hint" ref={regRef("scrollHint")}>
-        <span>Desplazá para explorar</span>
+        <span>{t("scroll.hint")}</span>
         <span className="scroll-chevron" />
       </div>
 
@@ -80,47 +87,39 @@ export function Overlay() {
           <div key={i} className={`toast toast-${n.kind}`} ref={regRef(`toast${i}`)} style={{ opacity: 0 }}>
             <span className="toast-dot" />
             <div className="toast-body">
-              <strong>{n.title}</strong>
-              <span>{n.desc}</span>
+              <strong>{t(`notif.${i}.title`)}</strong>
+              <span>{t(`notif.${i}.desc`)}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* TRACEABILITY — room exits, wall tablet detaches into the report */}
+      {/* TRACEABILITY — static left title + the report that flies, in 2D screen
+          space, from the projected wall tablet to the front (driven by StoryDirector) */}
       <Traceability />
+      <div className="trace-fly" ref={regRef("traceFly")} style={{ opacity: 0, display: "none" }}>
+        <TraceReport />
+      </div>
 
       {/* ENDING */}
       <div className="final" ref={regRef("final")} style={{ opacity: 0 }}>
         {/* the brand mark (logo + Growcast) lands here as the single logo */}
         <div className="final-main">
           <LogoReveal className="final-logo" size={240} />
-          <p className="final-tagline">Monitoreo, control y trazabilidad.</p>
+          <p className="final-tagline">{t("final.tagline")}</p>
           <div className="final-cta-row">
             {/* primary CTA opens the contact/demo dialog form */}
-            <ContactButton label="Solicitar demo →" />
+            <ContactButton label={t("cta.requestDemo")} />
             <Link className="cta cta-ghost" to="/catalog">
-              Catálogo
+              {t("cta.catalog")}
             </Link>
           </div>
-          <nav className="final-nav" aria-label="Secciones">
-            <Link to="/faqs">Preguntas frecuentes</Link>
-            <Link to="/testimonios">Testimonios</Link>
+          <nav className="final-nav" aria-label="Growcast">
+            <Link to="/faqs">{t("nav.faqs")}</Link>
+            <Link to="/testimonios">{t("nav.testimonials")}</Link>
           </nav>
         </div>
-        <footer className="final-footer">
-          <a className="wa-cta" href={WHATSAPP} target="_blank" rel="noreferrer">
-            <span className="wa-dot" /> Escribinos por WhatsApp
-          </a>
-          <div className="foot-links">
-            <a href={REGRET_FORM} target="_blank" rel="noreferrer">
-              Botón de arrepentimiento
-            </a>
-            <Link to="/privacidad">Política de privacidad</Link>
-            <Link to="/terminos">Términos y condiciones</Link>
-            <span className="foot-copy">© {new Date().getFullYear()} Growcast</span>
-          </div>
-        </footer>
+        <SiteFooter variant="landing" />
       </div>
     </div>
   );
