@@ -240,5 +240,14 @@ export function buildInstanceData(): InstanceData {
 // Physical anchor points for prop placement (back wall = -Z, left wall = -X).
 export const AC_POS: Vec3 = [2.2, 2.0, -ROOM_D / 2 + 0.22];
 export const TANK_POS: Vec3 = [-3.0, 0.12, -2.15];
-export const CONTROLLER_POS: Vec3 = [-1.45, 1.5, -ROOM_D / 2 + 0.14];
+// raised high on the back wall (above the plant canopy) so nothing occludes it
+export const CONTROLLER_POS: Vec3 = [-1.45, 1.78, -ROOM_D / 2 + 0.14];
+// The wall control tablet is PORTRAIT: a screen (the traceability-report surface)
+// in the upper area + a button/LED strip in the bottom ~30%. The screen aspect
+// matches the report exactly (960:1040 → w = h·960/1040) so the report fits it.
+// `y`/`z` = screen centre offset from CONTROLLER_POS (the device-body centre),
+// local units. Shared by props.tsx (mesh) and StoryDirector (report projection).
+export const CONTROLLER_SCREEN = { y: 0.08, z: 0.04, w: 0.369, h: 0.4 };
+// device body face size (portrait)
+export const CONTROLLER_BODY = { w: 0.41, h: 0.62, d: 0.06 };
 export const VAPORIZER_POS: Vec3 = [2.6, 0.12, 1.5];

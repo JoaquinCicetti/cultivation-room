@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useIntl } from "react-intl";
 
 import {
   clamp01,
@@ -80,6 +81,7 @@ function returnPulse(s: number) {
 }
 
 export function MetricCards() {
+  const intl = useIntl();
   const rootRef = useRef<HTMLDivElement>(null);
   const linesRef = useRef<SVGSVGElement>(null);
   const returnRef = useRef<HTMLDivElement>(null);
@@ -343,14 +345,14 @@ export function MetricCards() {
           aria-hidden
         >
           <span className="dev-return-dot" />
-          Volviendo a la línea temporal registrada
+          {intl.formatMessage({ id: "card.return" })}
         </div>
       </div>
     </>
   );
 }
 
-const STAT_LABELS = ["MIN", "PROM", "MED", "MAX"];
+const STAT_LABEL_IDS = ["card.stat.min", "card.stat.avg", "card.stat.median", "card.stat.max"];
 
 function MetricCard({
   m,
@@ -369,12 +371,14 @@ function MetricCard({
   lineEl: (el: SVGPathElement | null) => void;
   areaEl: (el: SVGPathElement | null) => void;
 }) {
+  const intl = useIntl();
   const gradId = `mcg-${m.id}`;
+  const unit = m.id === "hum" ? intl.formatMessage({ id: "card.unit.hum" }) : m.unit;
   return (
     <div className={`mcard mc-${m.id}`} ref={cardRef} data-status="normal">
       <div className="mc-head">
         <div className="mc-id">
-          <div className="mc-title">{m.name}</div>
+          <div className="mc-title">{intl.formatMessage({ id: `card.metric.${m.id}` })}</div>
         </div>
         <div className="mc-seg">
           {SEGMENTS.map((s, i) => (
@@ -389,16 +393,16 @@ function MetricCard({
         <span className="mc-num" ref={numRef}>
           {fmt(m.base, m.decimals)}
         </span>
-        {m.unit && <span className="mc-unit">{m.unit}</span>}
+        {unit && <span className="mc-unit">{unit}</span>}
         <span className="mc-arrow" ref={arrowRef} />
-        <span className="mc-badge">ALERTA</span>
+        <span className="mc-badge">{intl.formatMessage({ id: "card.alert" })}</span>
       </div>
 
       <div className="mc-stats">
-        {STAT_LABELS.map((label, s) => (
-          <div className="mc-stat" key={label}>
+        {STAT_LABEL_IDS.map((labelId, s) => (
+          <div className="mc-stat" key={labelId}>
             <b ref={(el) => statRef(s, el)}>{fmt(m.base, m.decimals)}</b>
-            <span>{label}</span>
+            <span>{intl.formatMessage({ id: labelId })}</span>
           </div>
         ))}
       </div>

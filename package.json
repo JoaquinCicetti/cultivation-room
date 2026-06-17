@@ -17,6 +17,7 @@
     "postprocessing": "^6.39.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-intl": "^10.1.13",
     "react-router-dom": "^7.5.0",
     "three": "^0.175.0"
   },
